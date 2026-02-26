@@ -1,0 +1,140 @@
+{
+  // Spell
+  "cSpell.enabled": false,
+
+  /* Breadcrumbs */
+  "breadcrumbs.enabled": false,
+
+  /* Diff Editor */
+  "diffEditor.ignoreTrimWhitespace": false,
+
+  /* Editor Settings */
+  "editor.accessibilitySupport": "off",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.fontFamily": "Menlo, Monaco, 'Courier New', monospace",
+  "editor.fontLigatures": true,
+  "terminal.integrated.fontLigatures.enabled": true,
+  "workbench.iconTheme": "vscode-icons",
+  "editor.fontSize": 14,
+  "editor.formatOnSave": true,
+  "editor.gotoLocation.multipleDeclarations": "goto",
+  "editor.gotoLocation.multipleImplementations": "goto",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "editor.gotoLocation.multipleReferences": "goto",
+  "editor.gotoLocation.multipleTypeDefinitions": "goto",
+  "editor.guides.bracketPairs": "active",
+  "editor.linkedEditing": true,
+  "editor.minimap.enabled": false,
+  "editor.suggestSelection": "first",
+  "editor.tabSize": 2,
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": [
+          "comment",
+          "constant.language",
+          "keyword.control",
+          "keyword.operator.expression",
+          "keyword.other",
+          "keyword.operator.new",
+          "variable.language",
+          "entity.other.attribute-name",
+          "storage"
+        ],
+        "settings": {
+          "fontStyle": "italic"
+        }
+      },
+      {
+        "scope": ["storage.type.function.arrow"],
+        "settings": {
+          "fontStyle": ""
+        }
+      }
+    ]
+  },
+  "editor.wordWrap": "off",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  /* Emmet */
+  "emmet.triggerExpansionOnTab": true,
+
+  /* Explorer */
+  "explorer.compactFolders": false,
+  "explorer.openEditors.visible": 1,
+  "explorer.sortOrder": "type",
+
+  /* Extensions */
+  "extensions.ignoreRecommendations": true,
+
+  /* Files */
+  "files.hotExit": "off",
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+
+  /* Git */
+  "git.autofetch": false,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.openRepositoryInParentFolders": "always",
+  "git.postCommitCommand": "push",
+
+  /* Search */
+  "search.showLineNumbers": true,
+
+  /* Security */
+  "security.workspace.trust.enabled": false,
+
+  /* Terminal */
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "icon": "terminal-powershell",
+      "source": "PowerShell",
+      "args": ["-NoLogo"]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.showExitAlert": false,
+
+  /* Update */
+  "update.mode": "default",
+
+  /* Window Settings */
+  "window.restoreWindows": "none",
+  "window.zoomLevel": 0.7,
+
+  /* Workbench */
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.highlightModifiedTabs": true,
+  "workbench.editor.restoreViewState": false,
+  "workbench.colorTheme": "Noctis Obscuro",
+  "workbench.list.openMode": "doubleClick",
+  "workbench.layoutControl.enabled": false,
+  "workbench.localHistory.enabled": false,
+  "workbench.sideBar.location": "right",
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+  "workbench.tree.indent": 20,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "path/to/specific/folder": true,
+    "themes/twentytwentyfive": true,
+    "themes/twentytwentyfour": true,
+    "themes/twentytwentythree": true
+  },
+  "terminal.integrated.scrollback": 100000,
+  "intelephense.diagnostics.undefinedFunctions": false,
+  "intelephense.diagnostics.undefinedTypes": false
+}

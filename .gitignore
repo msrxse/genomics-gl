@@ -1,0 +1,28 @@
+# Rust / Wasm build output
+target/
+pkg/
+dist/
+
+# Node
+node_modules/
+.pnp
+.pnp.js
+
+# Vite
+web/dist/
+web/.vite/
+
+# wasm-pack
+.wasm-pack/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Editor (keep .vscode/ tracked)
+*.swp
+*.swo
