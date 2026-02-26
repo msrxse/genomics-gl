@@ -134,35 +134,6 @@ These directly match bonus points in the JD:
 
 ---
 
-## Interview Presentation
-
-Frame it as:
+## Presentation
 
 > "I wanted to demonstrate exactly the skills required to work on the Ensembl genome browser — so I built a simplified genome browser from scratch using Rust, WebAssembly, WebGL, and React. It loads real genomic data, renders tracks at 60fps, and handles zooming and panning efficiently."
-
-Then show:
-
-- Rust/Wasm modules
-- WebGL rendering pipeline
-- Data indexing
-- React integration
-
-This signals:
-
-- Proactivity
-- Real interest in genomics
-- Ability to deliver scientific tools
-- Alignment with their core mission
-
-It is extremely high-signal to the team.
-
----
-
-## Next Steps
-
-- Full architecture diagram
-- Step-by-step build plan (Day 1 → Day 30)
-- Example Rust/Wasm skeleton code
-- Example dataset and file formats
-- Repository structure
-- Written README for GitHub

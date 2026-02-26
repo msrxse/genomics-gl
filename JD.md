@@ -2,7 +2,7 @@
 
 **@ European Molecular Biology Laboratory**
 
-Hinxton, Cambridgeshire, United Kingdom | Hybrid | Full Time, Contract
+📍 Hinxton, Cambridgeshire, United Kingdom | Hybrid | Full Time, Contract
 
 **Responsibilities:** Developing web, Collaborating teams, Documenting procedures
 
@@ -50,15 +50,15 @@ Initially this role will focus on uplifting our genome browser which is a WASM a
 
 - Working with the web team and web project leader to improve the development process
 
----
-
-## Milestones
+### Onboarding Milestones
 
 Typically within six months, members of the Ensembl project will:
 
-- **Month 1:** Review the genome browser code base. Submit codebase PRs, review PRs, attend team meetings
-- **Month 3:** Understand key components of our architecture, have a deeper understanding of the genome browser, contribute to our continuous improvement cycles, contribute to our regular data release cycles
-- **Month 6:** Make significant contributions to the genome browser uplift, present to our wider team, contribute to systems architecture
+| Milestone | Expectations |
+|---|---|
+| Month 1 | Review the genome browser code base. Submit codebase PRs, review PRs, attend team meetings |
+| Month 3 | Understand key components of our architecture, have a deeper understanding of the genome browser, contribute to our continuous improvement cycles, contribute to our regular data release cycles |
+| Month 6 | Make significant contributions to the genome browser uplift, present to our wider team, contribute to systems architecture |
 
 ---
 
@@ -80,7 +80,7 @@ Typically within six months, members of the Ensembl project will:
 
 ## Behaviours
 
-This role will be a great fit for you if you:
+**This role will be a great fit for you if you:**
 
 - Want to make a positive impact on genomic research
 - Have a good knowledge of computer graphics techniques
@@ -88,7 +88,7 @@ This role will be a great fit for you if you:
 - Like problem solving and the freedom to complete tasks with minimal direction
 - Are collaborative and enjoy working across teams
 
-This won't be the right role for you if you:
+**This won't be the right role for you if you:**
 
 - Prioritise completion over progression
 - Find adapting to changes of strategic direction challenging
@@ -102,8 +102,61 @@ This won't be the right role for you if you:
 - Experience with data visualisation
 - Experience of working with large datasets
 - Experience of working with web API technologies (RESTful, GraphQL, gRPC)
-- Good working knowledge Python
+- Good working knowledge of Python
 - Practical experience of RDBMSs and NoSQL solutions (including MySQL, and MongoDB)
 - Experience with Perl
 - A desire to improve the development process
 - A genuine curiosity about science
+
+---
+
+## Other Information
+
+**To apply:** Please submit an application with a personalised cover letter and CV. Incomplete applications will not be considered.
+
+**Hybrid Working:** At EMBL-EBI we are pleased to offer hybrid working options for all our employees. A dedicated desk will be available everyday; our team works two days on site (team day is Wednesday) and three from home.
+
+**Interviews:** We plan to invite selected candidates to a first round technical assessment, following this selected candidates will be invited to introductory calls with the team, with final interviews planned for February 2026.
+
+**Contract length:** 3 years (grant based)
+
+**Salary:** Grade 5 monthly salary starting at £3,303 after tax but excluding pension and insurance contributions. Plus generous benefits.
+
+---
+
+## Why Join Us
+
+### Do something meaningful
+
+At EMBL-EBI you can apply your talent and passion to accelerate science and tackle some of humankind's greatest challenges. EMBL-EBI, part of the European Molecular Biology Laboratory, is a worldwide leader in the storage, analysis and dissemination of large biological datasets. We provide the global research community with access to publicly available databases and tools which are crucial for the advancement of healthcare, food security, and biodiversity.
+
+### Join a culture of innovation
+
+We are located on the Wellcome Genome Campus, alongside other prominent research and biotech organisations, and surrounded by beautiful Cambridgeshire countryside. This is a highly collaborative and inclusive community where our employees enjoy a relaxed atmosphere. We are committed to ensuring our employees feel valued, supported and empowered to reach their professional potential.
+
+### Enjoy lots of benefits
+
+- **Financial incentives:** Monthly family, child and non-resident allowances, annual salary review, pension scheme, death benefit, long-term care, accident-at-work and unemployment insurances
+- **Flexible working arrangements** including hybrid working patterns
+- **Private medical insurance** for you and your immediate family (including all prescriptions and generous dental & optical cover)
+- **Generous time off:** 30 days annual leave per year, in addition to public holidays
+- **Relocation package** including installation grant (if required)
+- **Campus life:** Free shuttle bus to and from work, on-site library, subsidised on-site gym and cafeteria, casual dress code, extensive sports and social club activities (on campus and remotely)
+- **Family benefits:** On-site nursery, 10 days of child sick leave, generous parental leave, holiday clubs on campus and monthly family and child allowances
+- **Benefits for non-UK residents:** Visa exemption, education grant for private schooling, financial support to travel back to your home country every second year and a monthly non-resident allowance
+
+---
+
+## What Else You Need to Know
+
+**International applicants:** We recruit internationally and successful candidates are offered visa exemptions.
+
+**EMBL** is a signatory of DORA. Find out how we apply DORA principles to our recruitment and performance assessment processes.
+
+**Diversity and inclusion:** At EMBL, we believe that diverse teams drive innovation and scientific excellence. We encourage applications from candidates of all genders, identities, nationalities and/or any other diverse backgrounds.
+
+**How to apply:** Please submit a cover letter and a CV through our online system. Applications will close at 23:59 CET on the date shown below. We aim to provide a response within two weeks after the closing date.
+
+---
+
+**Closing Date: 25 March 2026**
