@@ -1,0 +1,222 @@
+# Spikes: Proof-of-Concept Tasks
+
+Three isolated experiments to validate the core technical boundaries before building the full project. Each spike is throwaway code — the goal is understanding, not production quality.
+
+Complete all three before starting the main repo. They can be done in any order, but Spike 1 is a prerequisite for Spike 3.
+
+---
+
+## Spike 1: Rust → Wasm → JS Boundary
+
+### Goal
+
+Prove that a Rust function compiled to WebAssembly can be called from JavaScript in a browser, passing data in both directions.
+
+### Background & Theory
+
+WebAssembly (Wasm) is a binary instruction format that runs in the browser at near-native speed. Rust compiles to Wasm via the `wasm32-unknown-unknown` target. However, Wasm natively only understands numeric types — integers and floats. It has no concept of strings, arrays, structs, or JS objects.
+
+`wasm-bindgen` is the glue layer that bridges this gap. It generates JS bindings that handle serialisation at the boundary: strings become UTF-8 encoded in Wasm linear memory, structs become JS objects via `serde` + JSON, and so on. `wasm-pack` wraps `wasm-bindgen` into a build tool that outputs an npm-compatible package (`.wasm` file + JS glue + TypeScript types).
+
+The key mental model: **Wasm linear memory is a flat byte array shared between Rust and JS.** When you pass a `&str` from JS to Rust, `wasm-bindgen` writes the UTF-8 bytes into that shared memory and passes a pointer + length to the Rust function. This is fast but has implications — you can't hold references across async boundaries naively.
+
+### Tasks
+
+- [ ] Install toolchain: `rustup target add wasm32-unknown-unknown` and `cargo install wasm-pack`
+- [ ] Create a new Rust lib crate: `cargo new --lib spike-wasm-boundary`
+- [ ] Add to `Cargo.toml`:
+  ```toml
+  [lib]
+  crate-type = ["cdylib"]
+
+  [dependencies]
+  wasm-bindgen = "0.2"
+  serde = { version = "1", features = ["derive"] }
+  serde-wasm-bindgen = "0.6"
+  ```
+- [ ] Write three exported functions that exercise different boundary types:
+  ```rust
+  // 1. Primitive: no serialisation needed
+  #[wasm_bindgen]
+  pub fn add(a: u32, b: u32) -> u32 { a + b }
+
+  // 2. String: wasm-bindgen handles UTF-8 encoding
+  #[wasm_bindgen]
+  pub fn greet(name: &str) -> String {
+      format!("Hello, {}!", name)
+  }
+
+  // 3. Struct: serialise to JsValue via serde
+  #[wasm_bindgen]
+  pub fn get_feature() -> JsValue {
+      #[derive(Serialize)]
+      struct Feature { start: u32, end: u32, name: String }
+      let f = Feature { start: 1000, end: 2000, name: "BRCA1".into() };
+      serde_wasm_bindgen::to_value(&f).unwrap()
+  }
+  ```
+- [ ] Build: `wasm-pack build --target web`
+- [ ] Write a plain `index.html` (no bundler) that imports the Wasm module and calls all three functions, printing results to the console
+- [ ] Serve locally (`python3 -m http.server`) and verify all three calls work in the browser devtools
+
+### What Success Looks Like
+
+- `add(2, 3)` returns `5` in the browser console
+- `greet("world")` returns `"Hello, world!"`
+- `get_feature()` returns a JS object `{ start: 1000, end: 2000, name: "BRCA1" }`
+- You understand why `crate-type = ["cdylib"]` is required
+- You understand the cost of the JS↔Wasm boundary and when to avoid it on the hot path
+
+### Gotchas to Watch For
+
+- **`crate-type`**: forgetting this produces a Rust static lib, not a dynamic lib Wasm can use
+- **CORS**: browsers block Wasm loads from `file://`. You must serve over HTTP even locally
+- **`--target web` vs `--target bundler`**: `web` gives you ESM you can import directly; `bundler` requires webpack/vite. Use `web` for this spike
+- **Panics**: a Rust panic in Wasm produces an opaque JS error. Add `console_error_panic_hook` to get readable stack traces during development
+
+---
+
+## Spike 2: Raw WebGL Rectangle in Rust via web-sys
+
+### Goal
+
+Draw a single coloured rectangle on an HTML canvas using WebGL, with all rendering code written in Rust using `web-sys` bindings. No JavaScript rendering logic.
+
+### Background & Theory
+
+WebGL is a JavaScript API that exposes the GPU's OpenGL ES 2.0 pipeline to the browser. It is stateful and imperative: you bind objects, configure state, issue draw calls. There is no scene graph — you manage everything explicitly.
+
+The rendering pipeline for a rectangle:
+
+1. **Geometry**: define vertex positions as a flat array of floats. A rectangle = 2 triangles = 6 vertices (or 4 vertices + index buffer).
+2. **Buffer**: upload the vertex array to GPU memory via a `WebGLBuffer`.
+3. **Shaders**: write two small GLSL programs:
+   - *Vertex shader*: runs once per vertex on the GPU. Takes a position, outputs `gl_Position` (clip space coordinate).
+   - *Fragment shader*: runs once per pixel covered by a triangle. Outputs a colour (`gl_FragColor`).
+4. **Program**: compile and link the two shaders into a `WebGLProgram`.
+5. **Draw call**: tell the GPU to draw triangles from the buffer using the program.
+
+`web-sys` provides Rust bindings to every Web API including WebGL. The bindings are 1:1 with the JS API — `gl.drawArrays(...)` becomes `gl.draw_arrays(...)`. This means every WebGL tutorial written in JS translates directly to Rust with `web-sys`, just with Rust syntax.
+
+**Clip space**: WebGL coordinates are not pixels. The canvas maps to a [-1, 1] range on both axes. (0, 0) is the centre. You convert from pixel coordinates to clip space in the vertex shader (or before uploading vertices).
+
+### Tasks
+
+- [ ] Create a new Rust lib crate: `cargo new --lib spike-webgl`
+- [ ] Add to `Cargo.toml`:
+  ```toml
+  [lib]
+  crate-type = ["cdylib"]
+
+  [dependencies]
+  wasm-bindgen = "0.2"
+  web-sys = { version = "0.3", features = [
+      "Window", "Document", "HtmlCanvasElement",
+      "WebGlRenderingContext", "WebGlBuffer",
+      "WebGlShader", "WebGlProgram",
+  ]}
+  js-sys = "0.3"
+  ```
+- [ ] Write the vertex shader (GLSL stored as a Rust `&str`):
+  ```glsl
+  attribute vec2 a_position;
+  void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+  }
+  ```
+- [ ] Write the fragment shader:
+  ```glsl
+  precision mediump float;
+  void main() {
+      gl_FragColor = vec4(0.2, 0.6, 1.0, 1.0); // blue
+  }
+  ```
+- [ ] In Rust, implement a `draw()` function that:
+  1. Gets the canvas element from the DOM via `web-sys`
+  2. Gets a `WebGlRenderingContext` from the canvas
+  3. Compiles both shaders and links them into a program
+  4. Defines 6 vertices for a rectangle (2 triangles) in clip space, e.g. covering [-0.5, 0.5] on both axes
+  5. Uploads vertices to a GPU buffer
+  6. Calls `draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 6)`
+- [ ] Wire up with a minimal `index.html` + `wasm-pack build --target web`
+- [ ] Verify: a blue rectangle appears on the canvas
+
+### What Success Looks Like
+
+- A coloured rectangle renders on the canvas
+- You understand the full pipeline: vertices → buffer → shader → draw call
+- You can explain what clip space is and how to convert to/from pixel coordinates
+- You understand what `gl_Position` and `gl_FragColor` do
+
+### Gotchas to Watch For
+
+- **`web-sys` features**: every DOM/WebGL type must be explicitly listed in `Cargo.toml` features. Forgetting one gives a compile error with a message about a missing feature flag — check the `web-sys` docs for the exact feature name.
+- **Shader compilation errors**: WebGL shader errors are strings you retrieve via `get_shader_info_log`. Add a helper that checks and panics with the log — otherwise failures are silent.
+- **Triangle winding**: the order of vertices matters for face culling. For 2D rectangles it doesn't matter, but be aware of it.
+- **Canvas size vs CSS size**: `canvas.width` and `canvas.height` (the pixel buffer size) are different from the CSS display size. Set both explicitly or your rectangle will appear distorted.
+- **Context lost**: if the GPU context is lost (rare in development), all WebGL state is wiped. Not relevant for a spike, but worth knowing.
+
+---
+
+## Spike 3: Wasm Module Running Inside a WebWorker
+
+### Goal
+
+Load a compiled Wasm module inside a WebWorker, send it a message from the main thread, have it call a Rust function, and post the result back — all without blocking the main thread.
+
+### Background & Theory
+
+Browsers are single-threaded by default. JavaScript on the main thread controls layout, rendering, and user events. Any long-running computation on the main thread blocks all of these — the UI freezes.
+
+**WebWorkers** are true OS threads exposed to the browser. A worker runs in a separate context: it has no access to the DOM, `window`, or `document`. Communication happens exclusively via `postMessage` / `onmessage`, which serialises data using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm) — effectively a superset of JSON that also handles `ArrayBuffer`, `TypedArray`, `Map`, etc.
+
+**Why Wasm in a worker**: Wasm compilation (`.instantiate()`) and heavy computation both block. Loading a 50MB dataset and parsing it in Wasm is work that must not happen on the main thread. The worker loads the `.wasm` file, instantiates the module, and then remains alive — the main thread sends query messages and receives results.
+
+**The message protocol**: define a typed union of message shapes. Each message has a `type` discriminant field:
+```
+Main → Worker: { type: 'load', data: ArrayBuffer }
+Main → Worker: { type: 'query', start: number, end: number }
+Worker → Main: { type: 'loaded' }
+Worker → Main: { type: 'result', features: Feature[] }
+```
+
+This is the same pattern used by the actual genome engine. Getting it right as a spike means the real implementation is just filling in the Rust logic.
+
+**Transferable objects**: `ArrayBuffer` can be *transferred* rather than copied. Once transferred, the sender loses access to it — it's zero-copy. This is important for passing large genomic datasets to the worker efficiently. Use `postMessage(msg, [msg.data])` to transfer.
+
+### Tasks
+
+- [ ] Reuse the Wasm crate from Spike 1, or create a minimal new one. Add a function that simulates work:
+  ```rust
+  #[wasm_bindgen]
+  pub fn sum_range(start: u32, end: u32) -> u32 {
+      (start..=end).sum()
+  }
+  ```
+- [ ] Build with `wasm-pack build --target no-modules` (required for workers in browsers that don't support ES module workers)
+- [ ] Write `worker.js`:
+  - Import the Wasm glue script via `importScripts()`
+  - Initialise the Wasm module on load
+  - Listen for messages: on `{ type: 'query', start, end }`, call `sum_range(start, end)`, post back `{ type: 'result', value }`
+- [ ] Write `main.js` (or inline in `index.html`):
+  - Create `new Worker('worker.js')`
+  - Post `{ type: 'query', start: 1, end: 1000000 }` to the worker
+  - Listen for the result message and display it
+- [ ] Verify in the browser: the result appears without the page freezing. Confirm the worker is running by checking the browser devtools Sources → Threads panel.
+- [ ] **Bonus**: add a `console.time` / `console.timeEnd` around the computation in the worker to measure how long `sum_range(1, 100_000_000)` takes. Observe that the main thread remains responsive during computation.
+
+### What Success Looks Like
+
+- The worker loads and initialises the Wasm module independently of the main thread
+- A message round-trip (main → worker → main) completes successfully
+- The main thread UI remains responsive while the worker computes
+- You understand the structured clone vs transfer distinction
+- You can explain why `--target no-modules` is used for workers vs `--target web` for main thread
+
+### Gotchas to Watch For
+
+- **`--target no-modules`**: ES module workers (`type: 'module'`) have limited browser support. `no-modules` uses `importScripts()` which works everywhere. When using Vite later, there are specific patterns for Wasm workers — this spike uses the raw approach to understand the mechanism.
+- **Wasm initialisation is async**: `wasm_bindgen()` returns a Promise. The worker must `await` it before handling any messages, or it will try to call uninitialised Wasm functions.
+- **`SharedArrayBuffer` requires COOP/COEP headers**: if you later want to use `SharedArrayBuffer` for zero-copy sharing between threads, your server must set `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. Not needed for this spike (we use `postMessage` + transfer), but worth knowing.
+- **Worker path**: the worker script path is relative to the HTML file, not the JS file importing it. This causes confusing 404s. Keep everything flat in a single directory for the spike.
+- **No DOM in workers**: if your Wasm code uses any `web-sys` DOM APIs (like `document.get_element_by_id`), it will panic inside a worker. The data engine must be pure computation — no DOM access.
