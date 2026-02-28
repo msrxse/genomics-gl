@@ -115,12 +115,12 @@ All six items below are required for MVP. No item is optional.
 
 ### 3. WebGL Renderer (Rust / web-sys)
 
-- [ ] Acquire `WebGlRenderingContext` from the canvas element (passed in from React)
-- [ ] Vertex buffer for gene block rectangles (one quad per feature in view)
-- [ ] Simple vertex + fragment shader pair (GLSL): solid colour fill per feature, different colour for +/- strand
-- [ ] Coordinate transform: genomic coordinates (bp) → screen pixels, based on current viewport (start, end, canvas width)
-- [ ] Ruler track: tick marks at sensible intervals (1kb, 10kb, 100kb depending on zoom level)
-- [ ] Re-renders when viewport or data changes
+- [x] Acquire `WebGlRenderingContext` from the canvas element (passed in from React)
+- [x] Vertex buffer for gene block rectangles (one quad per feature in view)
+- [x] Simple vertex + fragment shader pair (GLSL): solid colour fill per feature, different colour for +/- strand
+- [x] Coordinate transform: genomic coordinates (bp) → screen pixels, based on current viewport (start, end, canvas width)
+- [x] Ruler track: tick marks at sensible intervals (1kb, 10kb, 100kb depending on zoom level)
+- [x] Re-renders when viewport or data changes
 
 ### 4. Zoom & Pan
 

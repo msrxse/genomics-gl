@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build:wasm": "wasm-pack build ../crates/genome-engine --target web --out-dir ../../web/public/pkg",
+    "build:wasm": "wasm-pack build ../crates/genome-engine --target web --out-dir ../../web/src/pkg",
     "dev": "npm run build:wasm && vite",
     "build": "npm run build:wasm && tsc -b && vite build",
     "lint": "eslint .",

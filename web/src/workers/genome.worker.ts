@@ -2,7 +2,7 @@
 // Runs off the main thread — no DOM access.
 //
 // Build the Wasm pkg with:
-//   wasm-pack build crates/genome-engine --target web --out-dir ../../web/public/pkg
+//   wasm-pack build crates/genome-engine --target web --out-dir ../../web/src/pkg
 //
 // Message protocol:
 //   IN  { type: 'load', data: ArrayBuffer }
@@ -13,7 +13,7 @@
 
 import init, { load_bed, get_features_in_range, chromosome_length } from '/pkg/genome_engine.js';
 
-await init('/pkg/genome_engine_bg.wasm');
+await init('/genome_engine_bg.wasm');
 
 self.onmessage = (e: MessageEvent) => {
   const msg = e.data as WorkerMessage;
