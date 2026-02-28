@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spike 1: Wasm Boundary</title>
+</head>
+<body>
+  <h1>Spike 1: Rust → Wasm → JS</h1>
+  <p>Open the browser console to see results.</p>
+
+  <script type="module">
+    import init, { add, greet, get_feature } from './pkg/spike_wasm_boundary.js';
+
+    await init();
+
+    console.log('add(1, 7):', add(1, 7));
+
+    console.log('greet("world"):', greet("world"));
+    console.log('get_feature():', get_feature());
+  </script>
+</body>
+</html>

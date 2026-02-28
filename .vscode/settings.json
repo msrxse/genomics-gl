@@ -1,0 +1,91 @@
+{
+  /* Font */
+  "editor.fontFamily": "'Monaspace Neon', 'Geist Mono', monospace",
+  "editor.fontSize": 13.5,
+  "editor.lineHeight": 1.7,
+  "editor.fontLigatures": "'calt', 'liga', 'ss01', 'ss02', 'ss03', 'ss04', 'ss05', 'ss06', 'ss07', 'ss08'",
+  "terminal.integrated.fontFamily": "'Monaspace Neon', monospace",
+  "terminal.integrated.fontSize": 13,
+  "terminal.integrated.fontLigatures.enabled": true,
+
+  /* Theme */
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.iconTheme": "catppuccin-latte",
+
+  /* Layout — minimal chrome */
+  "editor.minimap.enabled": false,
+  "breadcrumbs.enabled": false,
+  "workbench.layoutControl.enabled": false,
+  "workbench.sideBar.location": "right",
+  "workbench.statusBar.visible": true,
+  "workbench.activityBar.location": "hidden",
+  "editor.scrollbar.vertical": "hidden",
+  "editor.scrollbar.horizontal": "hidden",
+  "editor.overviewRulerBorder": false,
+
+  /* Editor behaviour */
+  "editor.wordWrap": "off",
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "editor.cursorBlinking": "phase",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.smoothScrolling": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.linkedEditing": true,
+  "editor.suggestSelection": "first",
+  "editor.accessibilitySupport": "off",
+  "editor.renderLineHighlight": "gutter",
+  "editor.gotoLocation.multipleDeclarations": "goto",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "editor.gotoLocation.multipleImplementations": "goto",
+  "editor.gotoLocation.multipleReferences": "goto",
+  "editor.gotoLocation.multipleTypeDefinitions": "goto",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+
+  /* Formatting */
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" },
+
+  /* Files */
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.hotExit": "off",
+
+  /* Explorer */
+  "explorer.compactFolders": false,
+  "explorer.sortOrder": "type",
+  "explorer.openEditors.visible": 1,
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.highlightModifiedTabs": true,
+
+  /* Git */
+  "git.autofetch": false,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+
+  /* Terminal */
+  "terminal.integrated.scrollback": 100000,
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "terminal.integrated.showExitAlert": false,
+  "terminal.integrated.defaultProfile.osx": "zsh",
+
+  /* Misc */
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+  "workbench.tree.indent": 20,
+  "window.zoomLevel": 0.7,
+  "security.workspace.trust.enabled": false,
+  "extensions.ignoreRecommendations": true,
+  "search.showLineNumbers": true,
+  "emmet.triggerExpansionOnTab": true,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/target": true
+  }
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spike 2: WebGL Rectangle</title>
+  <style>
+    body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    canvas { border: 1px solid #444; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="600" height="400"></canvas>
+
+  <script type="module">
+    import init, { draw } from './pkg/spike_webgl.js';
+
+    await init();
+    draw();
+  </script>
+</body>
+</html>
