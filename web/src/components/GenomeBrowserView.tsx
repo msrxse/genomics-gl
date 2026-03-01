@@ -19,7 +19,8 @@ export function GenomeBrowserView() {
   const { ready: workerReady, features, query } = useGenomeWorker();
 
   // Pattern since we dont want query to be included in dependencies arrays.
-  // since it comes form the worker - theres no way to memoise it. Here we ensure latests is used
+  // since it comes from the worker - theres no way to memoise it.
+  // Here we ensure latest is used.
   const queryRef = useRef(query);
   useEffect(() => {
     queryRef.current = query;
@@ -33,7 +34,7 @@ export function GenomeBrowserView() {
     canvas.width = canvas.offsetWidth || 800;
     canvas.height = canvas.offsetHeight || 400;
 
-    init('/genome_engine_bg.wasm').then(() => {
+    init().then(() => {
       const gl = canvas.getContext("webgl");
       if (!gl) {
         console.error("WebGL not supported");

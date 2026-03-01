@@ -22,42 +22,111 @@ The reason for WebGL instead of Canvas 2D is performance: at low zoom levels you
 
 ---
 
-## Key Concepts
+## GPU vs Main Thread vs Browser
 
-### 1. Clip space vs pixel space
+There are three separate execution contexts. They don't share memory, they don't share a thread, and they don't even speak the same language.
 
-WebGL doesn't think in pixels. Its coordinate system ("clip space") goes from -1 to +1 on both axes, with (0,0) at the centre of the canvas. You have to convert your pixel coordinates into that range yourself. The vertex shader does this conversion using a `u_resolution` uniform (the canvas width and height).
+### 1. The Main Thread (JavaScript / Wasm)
 
-Also: WebGL's Y axis is flipped relative to pixels. Y=+1 is the _top_ in clip space, but Y=0 is the _top_ in pixel/DOM coordinates. You have to flip Y in the shader or everything renders upside down.
+This is the browser's single UI thread. It runs React, your Rust/Wasm (which compiles to Wasm but executes as CPU code), DOM manipulation, event handlers, layout, and painting. It has access to JavaScript objects, the DOM, the window — everything you think of as "the browser."
 
-### 2. Shaders
+Key constraint: it's single-threaded. If you block it, the UI freezes.
 
-WebGL draws nothing on its own — you write two small GPU programs called shaders:
+### 2. The WebWorker Thread (also CPU)
 
-- **Vertex shader**: runs once per vertex. Takes a position (and any other per-vertex data) and outputs where on screen that point lands.
-- **Fragment shader**: runs once per pixel covered by the geometry. Outputs the colour of that pixel.
+Still CPU, still your machine's processor, but a separate OS thread with no DOM access. In this project the `genome-engine` Wasm runs here for parsing and range queries — so heavy data work doesn't block the UI. Communication is only via `postMessage`. No shared memory (unless you use `SharedArrayBuffer`).
 
-These are written in GLSL — a small language with C-like syntax. You pass them to the browser as plain strings; the browser's GPU driver compiles them at runtime into code that runs directly on the GPU.
+### 3. The GPU
 
-### 3. Vertex buffers and a single draw call
+Completely separate hardware. It has its own processor (thousands of tiny parallel cores), its own memory (VRAM — separate from RAM), and its own programs (shaders, compiled to GPU machine code by the driver). The GPU does not run JavaScript or Wasm. It runs GLSL, compiled and uploaded at runtime. You can't call a JS function from a shader. You can't access a JS variable from VRAM.
 
-Instead of drawing features one at a time, you build a flat array of floats on the CPU — all the vertices for all the rectangles — and upload it to the GPU in one go. Then one `drawArrays()` call renders everything. This is the key to WebGL performance.
+### How they communicate
 
-Each rectangle is two triangles (6 vertices). Each vertex carries its position and colour. So for 1,000 features you upload one array of ~30,000 floats and make one draw call.
-
-### 4. The coordinate transform
-
-Genomic coordinates (base pairs) need to map to pixel x positions on the canvas. The formula is:
+The only bridge is the WebGL API — a set of calls the main thread makes to issue commands to the GPU. The GPU is async; it queues commands and executes them on its own schedule.
 
 ```
-screen_x = (genomic_pos - viewport_start) / (viewport_end - viewport_start) * canvas_width
+Main Thread (JS/Wasm)          GPU
+──────────────────────         ──────────────────────
+gl.bufferData(...)    ──────►  copy floats into VRAM
+gl.drawArrays(...)    ──────►  run vertex shader × N vertices
+                               run fragment shader × M pixels
+                               write pixels to framebuffer
+                      ◄──────  present framebuffer to screen
 ```
 
-This is the only "projection" needed. Y positions are fixed (row height, feature height — all constants).
+`gl.bufferData` is the one moment when data crosses from RAM to VRAM. After that the GPU owns it. The CPU doesn't see pixel outputs — the GPU writes directly to the screen's framebuffer.
 
-### 5. Row packing
+### Why this matters for a genome browser
 
-Features can overlap — two genes can span the same base-pair range. If you draw them at the same Y position they obscure each other. A greedy algorithm assigns each feature to a row so no two features in the same row overlap. Since the index already returns features sorted by start position, this is straightforward: scan features in order, assign each to the first row whose last feature ends before this one begins.
+At low zoom you might have 50,000 features visible.
+
+- **Canvas 2D (CPU)**: loop over 50,000 features, call `fillRect()` 50,000 times. Each call is a CPU→GPU round-trip. Slow, blocks the UI.
+- **WebGL (GPU)**: build one flat array of floats on CPU (fast), upload once, one `drawArrays` call. The GPU draws all 50,000 rectangles in parallel — one shader invocation per vertex, all at the same time. The CPU is free immediately.
+
+The GPU's advantage is massive parallelism — not speed per core, but thousands of cores executing simultaneously.
+
+---
+
+## WebGL Theory: Shaders, Programs, and Vertices
+
+WebGL is a state machine that runs programs on the GPU. You feed it data (vertices) and tell it two programs (shaders) — one to position things, one to color them.
+
+### Shaders
+
+Shaders are small GPU programs written in GLSL (a C-like language). There are exactly two kinds:
+
+- **Vertex shader** — runs once per vertex. Its job: given this vertex's data, where should it appear on screen? Output: `gl_Position` — a coordinate in clip space (a normalised -1 to +1 cube).
+- **Fragment shader** — runs once per pixel that a triangle covers. Its job: what colour should this pixel be? Output: `gl_FragColor` — an RGBA value.
+
+The GPU calls the vertex shader first, then rasterises triangles (figures out which pixels they cover), then calls the fragment shader for each covered pixel.
+
+### Program
+
+A program is the vertex + fragment shader compiled and linked together into one GPU-resident object. You can't use shaders independently — they must be paired. Once linked, you call `gl.use_program(program)` to make it active.
+
+```
+VERT_SHADER source  →  compile  →  vert shader object  ┐
+FRAG_SHADER source  →  compile  →  frag shader object  ┘ → link → WebGlProgram
+```
+
+### Vertices and buffers
+
+A vertex is a bundle of data for one point. In this renderer each vertex has 5 floats: `[x, y, r, g, b]`. Vertices are packed into a flat array on the CPU, then uploaded to the GPU via a buffer (`WebGlBuffer`). The GPU doesn't know your struct layout — you describe it with `vertex_attrib_pointer`.
+
+### Triangles (why 6 vertices per rectangle)
+
+WebGL's only primitive is the triangle. A rectangle = 2 triangles = 6 vertices:
+
+```
+(x1,y1)──(x2,y1)
+  │     ╲    │
+  │      ╲   │
+(x1,y2)──(x2,y2)
+
+Triangle 1: (x1,y1), (x2,y1), (x1,y2)
+Triangle 2: (x2,y1), (x2,y2), (x1,y2)
+```
+
+### Attributes vs uniforms vs varyings
+
+| Keyword | Scope | Direction | Example |
+|---|---|---|---|
+| `attribute` | per-vertex | CPU → vertex shader | `a_position`, `a_color` |
+| `uniform` | whole draw call | CPU → both shaders | `u_resolution` |
+| `varying` | per-pixel interpolated | vertex shader → fragment shader | `v_color` |
+
+`varying` is the magic that makes colours smooth across a triangle — the GPU linearly interpolates it between the triangle's 3 vertices.
+
+### The coordinate transform
+
+The vertex shader does one key conversion: pixel coordinates → clip space.
+
+```glsl
+vec2 clip = (a_position / u_resolution) * 2.0 - 1.0;
+gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+```
+
+You pass pixel coordinates (e.g. `x=300, y=50` on an 800×600 canvas). The shader divides by resolution to get `[0,1]`, scales to `[0,2]`, shifts to `[-1,1]`. Y is flipped because WebGL clip space has Y=+1 at top, but canvas pixel coordinates have Y=0 at top.
 
 ---
 
@@ -74,30 +143,6 @@ That's also why we don't need `Window`, `Document`, or `HtmlCanvasElement` here 
 ### Task 2: `crates/genome-engine/src/renderer.rs`
 
 Implement the `Renderer` struct. This is the core of item 3. It holds the GL context, compiled shader program, and vertex buffer. Exposes two things to JavaScript: a constructor (`new Renderer(gl)`) and a `render()` method that takes features + viewport and draws everything in a single draw call.
-
-**Terminology:**
-
-**Buffer** — a chunk of memory on the GPU. It holds the positions and colours of all the rectangles we want to draw, as a flat list of floats: `[x, y, r, g, b, x, y, r, g, b, ...]`. One buffer holds everything.
-
-**Vertices and quads** — a vertex is a single point in space with some data attached (position, colour). A quad is a rectangle made of two triangles. WebGL only draws triangles, so every rectangle = 2 triangles = 6 vertices. For each gene feature we add 6 entries to the buffer.
-
-**Attributes** — named inputs to the vertex shader that come from the buffer. We have two: `a_position` (the x,y of each vertex) and `a_color` (the r,g,b). When the GPU runs the vertex shader it reads these from the buffer automatically, one vertex at a time.
-
-**Uniforms** — values you send into the shader that are the same for every vertex in a draw call. We use one: `u_resolution` (canvas width and height). It doesn't change per-vertex — it's constant for the whole frame.
-
-**Shader** — a small program that runs on the GPU. The vertex shader runs once per vertex and says "put this point here on screen." The fragment shader runs once per pixel and says "colour this pixel this colour." You write them in GLSL as strings, hand them to the browser, and the GPU driver compiles them.
-
-**Program** — the linked pair of vertex + fragment shader. You compile each shader separately, then link them into a program. Once linked you `use_program()` before drawing and the GPU knows which shaders to run.
-
-So the full picture for one draw call is:
-
-```
-Buffer (flat float array)
-  → attributes tell the GPU how to read it (every 5 floats = 1 vertex: x, y, r, g, b)
-  → vertex shader runs for each vertex, uses a_position + u_resolution to place it on screen
-  → fragment shader runs for each pixel, uses a_color to fill it
-  → result: rectangles on canvas
-```
 
 ### Task 3: `web/src/components/GenomeBrowserView.tsx`
 
