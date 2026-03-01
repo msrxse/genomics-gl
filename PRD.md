@@ -20,17 +20,17 @@ This is a scaled-down version of what the Ensembl genome browser does, built wit
 
 ## Stack & Tooling
 
-| Layer | Technology | Rationale |
-|---|---|---|
-| Language | Rust | Core requirement; data engine + WebGL renderer |
-| Wasm | `wasm-bindgen` + `wasm-pack` | Standard Rust → Wasm bridge |
-| WebGL | `web-sys` (raw WebGL) | Matches Ensembl's actual approach |
-| UI shell | React + TypeScript | JD requirement; separates concerns cleanly |
-| Build | Trunk + Vite | Trunk manages Wasm lifecycle; Vite handles React/TS bundling |
-| Threading | WebWorker | Off-main-thread parsing; MVP requirement |
-| Data | Bundled sample BED file | No CORS issues; deterministic demo |
-| Testing | `wasm-bindgen-test` + Vitest | Unit tests on Rust data engine; component tests on React |
-| CI | GitHub Actions | Lint, test, build, deploy to GitHub Pages |
+| Layer     | Technology                   | Rationale                                                    |
+| --------- | ---------------------------- | ------------------------------------------------------------ |
+| Language  | Rust                         | Core requirement; data engine + WebGL renderer               |
+| Wasm      | `wasm-bindgen` + `wasm-pack` | Standard Rust → Wasm bridge                                  |
+| WebGL     | `web-sys` (raw WebGL)        | Matches Ensembl's actual approach                            |
+| UI shell  | React + TypeScript           | JD requirement; separates concerns cleanly                   |
+| Build     | Trunk + Vite                 | Trunk manages Wasm lifecycle; Vite handles React/TS bundling |
+| Threading | WebWorker                    | Off-main-thread parsing; MVP requirement                     |
+| Data      | Bundled sample BED file      | No CORS issues; deterministic demo                           |
+| Testing   | `wasm-bindgen-test` + Vitest | Unit tests on Rust data engine; component tests on React     |
+| CI        | GitHub Actions               | Lint, test, build, deploy to GitHub Pages                    |
 
 ---
 
@@ -89,9 +89,10 @@ All six items below are required for MVP. No item is optional.
 
 ### 1. Data Engine (Rust)
 
-- [ ] Parse BED format into `Vec<Feature>` where `Feature { chrom, start, end, name, strand }`
-- [ ] Build a UCSC binning index over the feature list (enables O(log n) range queries without a full scan)
-- [ ] Expose via `wasm-bindgen`:
+- [x] Parse BED format into `Vec<Feature>` where `Feature { chrom, start, end, name, strand }`
+- [x] Build a UCSC binning index over the feature list (enables O(log n) range queries without a full scan)
+- [x] Expose via `wasm-bindgen`:
+
   ```rust
   #[wasm_bindgen]
   pub fn load_bed(data: &[u8]) -> Result<(), JsValue>;
@@ -102,14 +103,15 @@ All six items below are required for MVP. No item is optional.
   #[wasm_bindgen]
   pub fn chromosome_length() -> u32;
   ```
-- [ ] Unit tests for parser and range query correctness (`wasm-bindgen-test`)
+
+- [x] Unit tests for parser and range query correctness (`wasm-bindgen-test`)
 
 ### 2. WebWorker Integration
 
-- [ ] Load the Wasm module inside a WebWorker
-- [ ] Worker receives `{ type: 'load', data: ArrayBuffer }` → calls `load_bed`
-- [ ] Worker receives `{ type: 'query', start, end }` → calls `get_features_in_range` → posts result back
-- [ ] React shell communicates with worker via a typed message interface (no raw `any`)
+- [x] Load the Wasm module inside a WebWorker
+- [x] Worker receives `{ type: 'load', data: ArrayBuffer }` → calls `load_bed`
+- [x] Worker receives `{ type: 'query', start, end }` → calls `get_features_in_range` → posts result back
+- [x] React shell communicates with worker via a typed message interface (no raw `any`)
 
 ### 3. WebGL Renderer (Rust / web-sys)
 
@@ -223,11 +225,11 @@ Track layout (y-axis): fixed row height (e.g. 20px), features packed into rows t
 
 ## Testing Strategy
 
-| Layer | Tool | What |
-|---|---|---|
-| Rust data engine | `wasm-bindgen-test` | Parser correctness, range query results, edge cases (empty file, features at boundaries) |
-| React components | Vitest + Testing Library | Render states, control interactions, tooltip display |
-| Integration | Playwright (stretch) | Load app, verify canvas renders, zoom/pan interaction |
+| Layer            | Tool                     | What                                                                                     |
+| ---------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| Rust data engine | `wasm-bindgen-test`      | Parser correctness, range query results, edge cases (empty file, features at boundaries) |
+| React components | Vitest + Testing Library | Render states, control interactions, tooltip display                                     |
+| Integration      | Playwright (stretch)     | Load app, verify canvas renders, zoom/pan interaction                                    |
 
 ---
 
