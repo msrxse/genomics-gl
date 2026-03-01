@@ -124,10 +124,10 @@ All six items below are required for MVP. No item is optional.
 
 ### 4. Zoom & Pan
 
-- [ ] Mouse wheel → zoom in/out centered on cursor position
-- [ ] Click + drag → pan left/right
-- [ ] Viewport state: `{ start: u32, end: u32 }` held in React, passed to renderer and used for range queries
-- [ ] Zoom clamped to: minimum 500bp visible, maximum = chromosome length
+- [x] Mouse wheel → zoom in/out centered on cursor position
+- [x] Click + drag → pan left/right
+- [x] Viewport state: `{ start: u32, end: u32 }` held in React, passed to renderer and used for range queries
+- [x] Zoom clamped to: minimum 500bp visible, maximum = chromosome length
 
 ### 5. Hover Tooltip
 
