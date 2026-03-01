@@ -25,7 +25,7 @@ export function useGenomeWorker() {
 
   useEffect(() => {
     const worker = new Worker(
-      new URL('./genome.worker.ts', import.meta.url),
+      new URL('../workers/genome.worker.ts', import.meta.url),
       { type: 'module' }
     );
 
