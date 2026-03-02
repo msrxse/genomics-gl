@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
-import { scaleLinear } from "d3-scale";
 import { axisBottom } from "d3-axis";
+import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
+import { useEffect, useRef } from "react";
 
 // Must match renderer.rs RULER_HEIGHT constant.
-const RULER_HEIGHT = 30;
+const RULER_HEIGHT = 25;
 
 interface Props {
   viewportStart: number;
@@ -28,13 +28,11 @@ export function GenomicAxis({ viewportStart, viewportEnd, width }: Props) {
     const tickFormat = (d: number | { valueOf(): number }) => {
       const v = +d;
       if (span >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} Mb`;
-      if (span >= 1_000)     return `${(v / 1_000).toFixed(1)} kb`;
+      if (span >= 1_000) return `${(v / 1_000).toFixed(1)} kb`;
       return `${v} bp`;
     };
 
-    const axis = axisBottom(scale)
-      .ticks(6)
-      .tickFormat(tickFormat);
+    const axis = axisBottom(scale).ticks(6).tickFormat(tickFormat);
 
     const g = select(svg).select<SVGGElement>("g");
     g.call(axis);
