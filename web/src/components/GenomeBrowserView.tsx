@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGenomeWorker } from "../hooks/useGenomeWorker";
 import type { Feature } from "../hooks/useGenomeWorker";
 import { FeatureDetails } from "./FeatureDetails";
+import { LoadingState } from "./LoadingState";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
 // Mirror of the renderer's layout constants (renderer.rs)
@@ -302,6 +303,7 @@ export function GenomeBrowserView() {
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
       />
       <FeatureDetails hovered={hoveredFeature} />
+      <LoadingState wasmReady={wasmReady} workerReady={workerReady} />
       <input
         type="range"
         min={0}
