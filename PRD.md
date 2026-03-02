@@ -140,11 +140,11 @@ All six items below are required for MVP. No item is optional.
 ### 6. React UI Shell
 
 - [x] `<GenomeBrowserView>` — owns the canvas, WebWorker lifecycle, renderer instance
-- [ ] `<ControlPanel>` — zoom in/out buttons, coordinate display (current viewport start/end in bp)
+- [x] `<ControlPanel>` — zoom in/out buttons, coordinate display (current viewport start/end in bp), reset button
 - [x] `<FeatureDetails>` — tooltip panel
 - [x] `<LoadingState>` — shown while Wasm initialises and BED file is parsed
 - [x] TypeScript throughout; no `any` types at the React layer
-- [ ] D3 SVG axis overlay — labelled genomic axis over the WebGL ruler track (bp → Mb labels, smart tick density at any zoom level)
+- [x] D3 SVG axis overlay — labelled genomic axis over the WebGL ruler track (bp → Mb labels, smart tick density at any zoom level)
 
 ---
 
