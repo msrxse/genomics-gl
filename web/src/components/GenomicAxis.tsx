@@ -37,8 +37,10 @@ export function GenomicAxis({ viewportStart, viewportEnd, width }: Props) {
 
     const g = select(svg).select<SVGGElement>("g");
 
-    // Animate ticks sliding to new positions on each viewport change.
-    g.transition().duration(200).call(axis);
+    // Interrupt any in-flight transition before starting a new one —
+    // prevents queuing lag when the viewport updates continuously (wheel/drag).
+    g.interrupt();
+    g.transition().duration(120).call(axis);
 
     // Style: mute the default D3 domain line, keep ticks subtle.
     g.select(".domain").attr("stroke", "rgba(255,255,255,0.2)");
