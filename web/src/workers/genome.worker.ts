@@ -10,6 +10,9 @@
 //
 //   IN  { type: 'query', start: number, end: number }
 //   OUT { type: 'result', features: Feature[] }
+//
+//   IN  { type: 'queryAll' }
+//   OUT { type: 'allFeatures', features: Feature[] }
 
 import init, { load_bed, get_features_in_range, chromosome_length } from '/pkg/genome_engine.js';
 
@@ -43,6 +46,10 @@ function handle(msg: WorkerMessage) {
   } else if (msg.type === 'query') {
     const features = get_features_in_range(msg.start, msg.end);
     self.postMessage({ type: 'result', features });
+  } else if (msg.type === 'queryAll') {
+    const chromLen = chromosome_length();
+    const features = get_features_in_range(0, chromLen);
+    self.postMessage({ type: 'allFeatures', features });
   }
 }
 
@@ -50,4 +57,5 @@ function handle(msg: WorkerMessage) {
 
 type WorkerMessage =
   | { type: 'load'; data: ArrayBuffer }
-  | { type: 'query'; start: number; end: number };
+  | { type: 'query'; start: number; end: number }
+  | { type: 'queryAll' };

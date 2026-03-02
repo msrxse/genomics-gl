@@ -13,6 +13,7 @@ interface WorkerState {
   ready: boolean;
   chromosomeLength: number;
   features: Feature[];
+  allFeatures: Feature[];
 }
 
 export function useGenomeWorker() {
@@ -21,6 +22,7 @@ export function useGenomeWorker() {
     ready: false,
     chromosomeLength: 0,
     features: [],
+    allFeatures: [],
   });
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export function useGenomeWorker() {
         setState(s => ({ ...s, ready: true, chromosomeLength: msg.chromosomeLength }));
       } else if (msg.type === 'result') {
         setState(s => ({ ...s, features: msg.features }));
+      } else if (msg.type === 'allFeatures') {
+        setState(s => ({ ...s, allFeatures: msg.features }));
       }
     };
 
@@ -52,11 +56,16 @@ export function useGenomeWorker() {
     workerRef.current?.postMessage({ type: 'query', start, end });
   }
 
-  return { ...state, query };
+  function queryAll() {
+    workerRef.current?.postMessage({ type: 'queryAll' });
+  }
+
+  return { ...state, query, queryAll };
 }
 
 // --- Types ---
 
 type WorkerResponse =
   | { type: 'ready'; chromosomeLength: number }
-  | { type: 'result'; features: Feature[] };
+  | { type: 'result'; features: Feature[] }
+  | { type: 'allFeatures'; features: Feature[] };
