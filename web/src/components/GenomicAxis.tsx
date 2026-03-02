@@ -1,6 +1,7 @@
 import { axisBottom } from "d3-axis";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
+import "d3-transition"; // augments Selection with .transition()
 import { useEffect, useRef } from "react";
 
 // Must match renderer.rs RULER_HEIGHT constant.
@@ -35,7 +36,9 @@ export function GenomicAxis({ viewportStart, viewportEnd, width }: Props) {
     const axis = axisBottom(scale).ticks(6).tickFormat(tickFormat);
 
     const g = select(svg).select<SVGGElement>("g");
-    g.call(axis);
+
+    // Animate ticks sliding to new positions on each viewport change.
+    g.transition().duration(200).call(axis);
 
     // Style: mute the default D3 domain line, keep ticks subtle.
     g.select(".domain").attr("stroke", "rgba(255,255,255,0.2)");
