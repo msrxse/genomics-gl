@@ -170,7 +170,11 @@ Ordered by relevance to the JD:
 3. **Smooth GPU zoom animation** — interpolate viewport transform in the shader rather than snapping
 4. **Downsampling / LOD** — at low zoom, merge overlapping features into a density plot rather than individual rectangles
 5. **Tabix-indexed file support** — fetch only the region needed from a remote tabix-indexed BED; demonstrates bioinformatics awareness
-7. **Python data prep script** — a small script to filter/sort/index a raw Ensembl annotation file into the bundled sample
+6. **Python data prep script** — a small script to filter/sort/index a raw Ensembl annotation file into the bundled sample
+
+### Done (stretch)
+
+- [x] **d3-brush overview+detail** — `<GenomeBrush>` component below the WebGL canvas shows the full chr22 extent with a density background (feature count per bin) and a d3-brush selection indicating the current viewport; two-way sync with zoom/pan/buttons
 
 ---
 
