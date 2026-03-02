@@ -192,41 +192,15 @@ fn pack_rows(features: &[Feature]) -> Vec<usize> {
 
 fn build_ruler_vertices(
     vertices: &mut Vec<f32>,
-    viewport_start: u32,
-    viewport_end: u32,
+    _viewport_start: u32,
+    _viewport_end: u32,
     canvas_width: f32,
 ) {
     const RULER_HEIGHT: f32 = 30.0;
-    const TICK_WIDTH: f32 = 1.5;
     const BG_COLOR: [f32; 3] = [0.18, 0.18, 0.22];
-    const TICK_COLOR: [f32; 3] = [0.70, 0.70, 0.75];
 
-    // Background bar
+    // Background bar only — tick marks and labels are rendered by the D3 SVG overlay.
     push_quad(vertices, 0.0, 0.0, canvas_width, RULER_HEIGHT, BG_COLOR);
-
-    let span = (viewport_end - viewport_start) as f64;
-    let raw_interval = span / 10.0;
-    let magnitude = raw_interval.log10().floor() as i32;
-    let base: f64 = 10f64.powi(magnitude);
-    let interval = (if raw_interval / base >= 5.0 { base * 5.0 } else { base }) as u32;
-
-    if interval == 0 {
-        return;
-    }
-
-    let first_tick = ((viewport_start / interval) + 1) * interval;
-    let mut tick = first_tick;
-
-    while tick < viewport_end {
-        let sx = genomic_to_screen(tick, viewport_start, viewport_end, canvas_width);
-        push_quad(
-            vertices,
-            sx - TICK_WIDTH / 2.0, 4.0,
-            sx + TICK_WIDTH / 2.0, RULER_HEIGHT - 4.0,
-            TICK_COLOR,
-        );
-        tick = tick.saturating_add(interval);
-    }
 }
 
 // --- Shader helpers ---
