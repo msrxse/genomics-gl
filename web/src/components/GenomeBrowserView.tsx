@@ -5,6 +5,7 @@ import { FeatureDetails } from "./FeatureDetails";
 import { LoadingState } from "./LoadingState";
 import { GenomicAxis } from "./GenomicAxis";
 import { ControlPanel } from "./ControlPanel";
+import { GenomeBrush } from "./GenomeBrush";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
 // Mirror of the renderer's layout constants (renderer.rs)
@@ -60,7 +61,7 @@ export function GenomeBrowserView() {
   const [wasmReady, setWasmReady] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(0);
 
-  const { ready: workerReady, features, chromosomeLength, query } = useGenomeWorker();
+  const { ready: workerReady, features, allFeatures, chromosomeLength, query, queryAll } = useGenomeWorker();
 
   // Pattern since we dont want query to be included in dependencies arrays.
   // since it comes from the worker - theres no way to memoise it.
@@ -69,6 +70,18 @@ export function GenomeBrowserView() {
   useEffect(() => {
     queryRef.current = query;
   }, [query]);
+
+  const queryAllRef = useRef(queryAll);
+  useEffect(() => {
+    queryAllRef.current = queryAll;
+  }, [queryAll]);
+
+  // Fetch all features once for the GenomeBrush density overview.
+  useEffect(() => {
+    if (workerReady) {
+      queryAllRef.current();
+    }
+  }, [workerReady]);
 
   // Initialize Wasm and create the Renderer once on mount.
   // The isMounted flag guards against StrictMode's double-invoke: if the effect
@@ -318,6 +331,13 @@ export function GenomeBrowserView() {
         <FeatureDetails hovered={hoveredFeature} />
         <LoadingState wasmReady={wasmReady} workerReady={workerReady} />
       </div>
+      <GenomeBrush
+        chromosomeLength={chromosomeLength}
+        viewportStart={viewport.start}
+        viewportEnd={viewport.end}
+        allFeatures={allFeatures}
+        onBrush={(start, end) => setViewport(clampViewport(start, end, chromosomeLength))}
+      />
     </div>
   );
 }

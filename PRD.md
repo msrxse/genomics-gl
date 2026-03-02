@@ -146,6 +146,17 @@ All six items below are required for MVP. No item is optional.
 - [x] TypeScript throughout; no `any` types at the React layer
 - [x] D3 SVG axis overlay — labelled genomic axis over the WebGL ruler track (bp → Mb labels, smart tick density at any zoom level)
 
+### 7. Polish & Infrastructure
+
+- [ ] **a. CI pipeline** — GitHub Actions: `cargo fmt --check`, `cargo clippy`, `wasm-pack test --headless --firefox`, `tsc --noEmit`, `eslint`, `vitest run`, `vite build`, deploy to GitHub Pages on push to `main`
+- [ ] **b. Multi-track rendering** — second track (e.g. GC content or repeat regions) rendered in a separate row with a distinct visual style; track list managed in React
+- [ ] **c. GFF3 support** — Rust parser for gene → transcript → exon hierarchy; renderer draws exon blocks with intron connectors (thin horizontal line between exons)
+- [ ] **d. Tests** — Vitest + Testing Library component tests for `ControlPanel` (zoom/reset interactions), `LoadingState` (render states), `FeatureDetails` (tooltip content); complete the testing strategy from §Testing
+- [ ] **e. README with live demo link** — architecture overview diagram, stack badges, live GitHub Pages URL, instructions to run locally; satisfies Definition of Done item 6
+- [ ] **f. Keyboard navigation** — `←`/`→` arrow keys pan by 20% of viewport span; `+`/`−` keys zoom in/out; `0` resets to initial viewport
+- [ ] **g. URL-synced viewport** — encode `?chrom=chr22&start=X&end=Y` in the URL so the current view is shareable and bookmarkable; parse on load to restore viewport
+- [x] ~~**h. Strand arrow indicators** — small `›` / `‹` chevrons rendered inside feature blocks in the WebGL track to indicate strand direction at zoom levels where features are wide enough~~ *(dropped — colour coding already communicates strand; chevrons add complexity for no visible gain)*
+
 ---
 
 ## Non-Goals (MVP)
@@ -170,7 +181,11 @@ Ordered by relevance to the JD:
 3. **Smooth GPU zoom animation** — interpolate viewport transform in the shader rather than snapping
 4. **Downsampling / LOD** — at low zoom, merge overlapping features into a density plot rather than individual rectangles
 5. **Tabix-indexed file support** — fetch only the region needed from a remote tabix-indexed BED; demonstrates bioinformatics awareness
-7. **Python data prep script** — a small script to filter/sort/index a raw Ensembl annotation file into the bundled sample
+6. **Python data prep script** — a small script to filter/sort/index a raw Ensembl annotation file into the bundled sample
+
+### Done (stretch)
+
+- [x] **d3-brush overview+detail** — `<GenomeBrush>` component below the WebGL canvas shows the full chr22 extent with a density background (feature count per bin) and a d3-brush selection indicating the current viewport; two-way sync with zoom/pan/buttons
 
 ---
 
