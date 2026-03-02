@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useGenomeWorker } from "../hooks/useGenomeWorker";
 import type { Feature } from "../hooks/useGenomeWorker";
 import { FeatureDetails } from "./FeatureDetails";
+import { LoadingState } from "./LoadingState";
+import { GenomicAxis } from "./GenomicAxis";
+import { ControlPanel } from "./ControlPanel";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
 // Mirror of the renderer's layout constants (renderer.rs)
@@ -55,6 +58,7 @@ export function GenomeBrowserView() {
 
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
   const [wasmReady, setWasmReady] = useState(false);
+  const [canvasWidth, setCanvasWidth] = useState(0);
 
   const { ready: workerReady, features, chromosomeLength, query } = useGenomeWorker();
 
@@ -78,6 +82,7 @@ export function GenomeBrowserView() {
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width || 800;
     canvas.height = rect.height || 400;
+    setCanvasWidth(rect.width || 800);
 
     let isMounted = true;
 
@@ -282,34 +287,37 @@ export function GenomeBrowserView() {
     }
   }, [features, wasmReady, viewport]);
 
-  const span = viewport.end - viewport.start;
-  const scrollMax = Math.max(0, (chromosomeLength || span) - span);
-
-  // Scrollbar pans by shifting start while keeping the current span fixed.
-  function onScroll(e: React.ChangeEvent<HTMLInputElement>) {
-    const newStart = Number(e.target.value);
-    setViewport({ start: newStart, end: newStart + span });
+  function zoomBy(factor: number) {
+    const vp = viewportRef.current;
+    const chromLen = chromLenRef.current;
+    const span = vp.end - vp.start;
+    const mid = vp.start + span / 2;
+    const newSpan = span * factor;
+    setViewport(clampViewport(mid - newSpan / 2, mid + newSpan / 2, chromLen || span));
   }
 
   return (
-    <div style={{ width: "100%", position: "relative" }}>
-      <canvas
-        ref={canvasRef}
-        style={{ width: "100%", height: "400px", display: "block" }}
+    <div style={{ width: "100%" }}>
+      <ControlPanel
+        viewport={viewport}
+        chromosomeLength={chromosomeLength}
+        onZoomIn={() => zoomBy(0.5)}
+        onZoomOut={() => zoomBy(2)}
+        onReset={() => setViewport(INITIAL_VIEWPORT)}
       />
-      <canvas
-        ref={overlayRef}
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
-      />
-      <FeatureDetails hovered={hoveredFeature} />
-      <input
-        type="range"
-        min={0}
-        max={scrollMax}
-        value={viewport.start}
-        onChange={onScroll}
-        style={{ width: "100%", margin: 0, display: "block" }}
-      />
+      <div style={{ position: "relative" }}>
+        <canvas
+          ref={canvasRef}
+          style={{ width: "100%", height: "400px", display: "block" }}
+        />
+        <canvas
+          ref={overlayRef}
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
+        />
+        <GenomicAxis viewportStart={viewport.start} viewportEnd={viewport.end} width={canvasWidth} />
+        <FeatureDetails hovered={hoveredFeature} />
+        <LoadingState wasmReady={wasmReady} workerReady={workerReady} />
+      </div>
     </div>
   );
 }

@@ -131,17 +131,20 @@ All six items below are required for MVP. No item is optional.
 
 ### 5. Hover Tooltip
 
-- [ ] On `mousemove` over canvas: hit-test against currently rendered features (in screen coordinates)
-- [ ] Show tooltip with: feature name, coordinates (start–end), strand
-- [ ] Tooltip is a React component overlaid on the canvas (not drawn in WebGL)
+- [x] On `mousemove` over canvas: hit-test against currently rendered features (in screen coordinates)
+- [x] Show tooltip with: feature name, coordinates (start–end), strand
+- [x] Tooltip is a React component overlaid on the canvas (not drawn in WebGL)
+- [x] 2D canvas overlay draws a white outline rect around the hovered feature
+- [x] Cursor switches to crosshair on feature hover, grab otherwise
 
 ### 6. React UI Shell
 
-- [ ] `<GenomeBrowserView>` — owns the canvas, WebWorker lifecycle, renderer instance
-- [ ] `<ControlPanel>` — zoom in/out buttons, coordinate display (current viewport start/end in bp)
-- [ ] `<FeatureDetails>` — tooltip panel
-- [ ] `<LoadingState>` — shown while Wasm initialises and BED file is parsed
-- [ ] TypeScript throughout; no `any` types at the React layer
+- [x] `<GenomeBrowserView>` — owns the canvas, WebWorker lifecycle, renderer instance
+- [x] `<ControlPanel>` — zoom in/out buttons, coordinate display (current viewport start/end in bp), reset button
+- [x] `<FeatureDetails>` — tooltip panel
+- [x] `<LoadingState>` — shown while Wasm initialises and BED file is parsed
+- [x] TypeScript throughout; no `any` types at the React layer
+- [x] D3 SVG axis overlay — labelled genomic axis over the WebGL ruler track (bp → Mb labels, smart tick density at any zoom level)
 
 ---
 
@@ -166,8 +169,7 @@ Ordered by relevance to the JD:
 2. **GFF3 support** — parse gene → transcript → exon hierarchy; render exon blocks with intron connectors
 3. **Smooth GPU zoom animation** — interpolate viewport transform in the shader rather than snapping
 4. **Downsampling / LOD** — at low zoom, merge overlapping features into a density plot rather than individual rectangles
-5. **D3 SVG overlay** — render axis labels and tooltips with D3 over the WebGL canvas (hybrid approach common in scientific tools)
-6. **Tabix-indexed file support** — fetch only the region needed from a remote tabix-indexed BED; demonstrates bioinformatics awareness
+5. **Tabix-indexed file support** — fetch only the region needed from a remote tabix-indexed BED; demonstrates bioinformatics awareness
 7. **Python data prep script** — a small script to filter/sort/index a raw Ensembl annotation file into the bundled sample
 
 ---
