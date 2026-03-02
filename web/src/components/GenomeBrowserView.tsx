@@ -1,6 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import { useGenomeWorker } from "../hooks/useGenomeWorker";
+import type { Feature } from "../hooks/useGenomeWorker";
+import { FeatureDetails } from "./FeatureDetails";
 import init, { Renderer } from "/pkg/genome_engine.js";
+
+// Mirror of the renderer's layout constants (renderer.rs)
+const RULER_HEIGHT = 30;
+const ROW_HEIGHT = 20;
+const PADDING = 2;
+
+function genomicToScreen(pos: number, vpStart: number, vpEnd: number, canvasWidth: number): number {
+  return ((pos - vpStart) / (vpEnd - vpStart)) * canvasWidth;
+}
+
+// Mirror of pack_rows in renderer.rs — greedy row packing by feature end position.
+function packRows(features: Feature[]): number[] {
+  const rowEnds: number[] = [];
+  return features.map(f => {
+    const row = rowEnds.findIndex(end => end <= f.start);
+    if (row === -1) {
+      rowEnds.push(f.end);
+      return rowEnds.length - 1;
+    }
+    rowEnds[row] = f.end;
+    return row;
+  });
+}
+
+export interface HoveredFeature {
+  feature: Feature;
+  screenX: number;
+  screenY: number;
+}
 
 interface Viewport {
   start: number;
@@ -19,6 +50,7 @@ function clampViewport(start: number, end: number, chromLen: number): Viewport {
 
 export function GenomeBrowserView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
 
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
@@ -84,6 +116,89 @@ export function GenomeBrowserView() {
   useEffect(() => { viewportRef.current = viewport; }, [viewport]);
   const chromLenRef = useRef(chromosomeLength);
   useEffect(() => { chromLenRef.current = chromosomeLength; }, [chromosomeLength]);
+
+  // Hover hit-test — rAF-throttled mousemove over the canvas.
+  const [hoveredFeature, setHoveredFeature] = useState<HoveredFeature | null>(null);
+  const featuresRef = useRef<Feature[]>([]);
+  useEffect(() => { featuresRef.current = features; }, [features]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
+    if (!canvas || !overlay) return;
+
+    // Match overlay pixel dimensions to the WebGL canvas on mount.
+    const rect = canvas.getBoundingClientRect();
+    overlay.width = canvas.width || rect.width || 800;
+    overlay.height = canvas.height || rect.height || 400;
+
+    let rafId: number | null = null;
+
+    function onMouseMove(e: MouseEvent) {
+      if (rafId !== null) return; // already scheduled
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const rect = canvas!.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const vp = viewportRef.current;
+        const cw = canvas!.width;
+        const ch = canvas!.height;
+        const scaleX = rect.width / cw;
+        const scaleY = rect.height / ch;
+
+        const rows = packRows(featuresRef.current);
+        let hit: HoveredFeature | null = null;
+
+        for (let i = 0; i < featuresRef.current.length; i++) {
+          const f = featuresRef.current[i];
+          const x1 = genomicToScreen(f.start, vp.start, vp.end, cw);
+          const x2 = genomicToScreen(f.end, vp.start, vp.end, cw);
+          const y1 = RULER_HEIGHT + rows[i] * ROW_HEIGHT + PADDING;
+          const y2 = y1 + ROW_HEIGHT - 2 * PADDING;
+
+          if (
+            mouseX >= x1 * scaleX && mouseX <= x2 * scaleX &&
+            mouseY >= y1 * scaleY && mouseY <= y2 * scaleY
+          ) {
+            hit = { feature: f, screenX: e.clientX - rect.left, screenY: e.clientY - rect.top };
+
+            // Draw highlight rect on the 2D overlay (in canvas pixel space)
+            const ctx = overlay!.getContext('2d')!;
+            ctx.clearRect(0, 0, overlay!.width, overlay!.height);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+            canvas!.style.cursor = 'crosshair';
+            break;
+          }
+        }
+
+        if (!hit) {
+          overlay!.getContext('2d')!.clearRect(0, 0, overlay!.width, overlay!.height);
+          canvas!.style.cursor = 'grab';
+        }
+
+        setHoveredFeature(hit);
+      });
+    }
+
+    function onMouseLeave() {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      overlay!.getContext('2d')!.clearRect(0, 0, overlay!.width, overlay!.height);
+      canvas!.style.cursor = 'grab';
+      setHoveredFeature(null);
+    }
+
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseleave', onMouseLeave);
+    return () => {
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   // Pan by click+drag. Track the genomic position under the cursor on mousedown,
   // then shift the viewport so that position stays under the cursor as it moves.
@@ -177,11 +292,16 @@ export function GenomeBrowserView() {
   }
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%", position: "relative" }}>
       <canvas
         ref={canvasRef}
         style={{ width: "100%", height: "400px", display: "block" }}
       />
+      <canvas
+        ref={overlayRef}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
+      />
+      <FeatureDetails hovered={hoveredFeature} />
       <input
         type="range"
         min={0}
