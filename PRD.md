@@ -131,17 +131,19 @@ All six items below are required for MVP. No item is optional.
 
 ### 5. Hover Tooltip
 
-- [ ] On `mousemove` over canvas: hit-test against currently rendered features (in screen coordinates)
-- [ ] Show tooltip with: feature name, coordinates (start–end), strand
-- [ ] Tooltip is a React component overlaid on the canvas (not drawn in WebGL)
+- [x] On `mousemove` over canvas: hit-test against currently rendered features (in screen coordinates)
+- [x] Show tooltip with: feature name, coordinates (start–end), strand
+- [x] Tooltip is a React component overlaid on the canvas (not drawn in WebGL)
+- [x] 2D canvas overlay draws a white outline rect around the hovered feature
+- [x] Cursor switches to crosshair on feature hover, grab otherwise
 
 ### 6. React UI Shell
 
-- [ ] `<GenomeBrowserView>` — owns the canvas, WebWorker lifecycle, renderer instance
+- [x] `<GenomeBrowserView>` — owns the canvas, WebWorker lifecycle, renderer instance
 - [ ] `<ControlPanel>` — zoom in/out buttons, coordinate display (current viewport start/end in bp)
-- [ ] `<FeatureDetails>` — tooltip panel
-- [ ] `<LoadingState>` — shown while Wasm initialises and BED file is parsed
-- [ ] TypeScript throughout; no `any` types at the React layer
+- [x] `<FeatureDetails>` — tooltip panel
+- [x] `<LoadingState>` — shown while Wasm initialises and BED file is parsed
+- [x] TypeScript throughout; no `any` types at the React layer
 
 ---
 
