@@ -3,6 +3,7 @@ import { useGenomeWorker } from "../hooks/useGenomeWorker";
 import type { Feature } from "../hooks/useGenomeWorker";
 import { FeatureDetails } from "./FeatureDetails";
 import { LoadingState } from "./LoadingState";
+import { GenomicAxis } from "./GenomicAxis";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
 // Mirror of the renderer's layout constants (renderer.rs)
@@ -56,6 +57,7 @@ export function GenomeBrowserView() {
 
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
   const [wasmReady, setWasmReady] = useState(false);
+  const [canvasWidth, setCanvasWidth] = useState(0);
 
   const { ready: workerReady, features, chromosomeLength, query } = useGenomeWorker();
 
@@ -79,6 +81,7 @@ export function GenomeBrowserView() {
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width || 800;
     canvas.height = rect.height || 400;
+    setCanvasWidth(rect.width || 800);
 
     let isMounted = true;
 
@@ -302,6 +305,7 @@ export function GenomeBrowserView() {
         ref={overlayRef}
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
       />
+      <GenomicAxis viewportStart={viewport.start} viewportEnd={viewport.end} width={canvasWidth} />
       <FeatureDetails hovered={hoveredFeature} />
       <LoadingState wasmReady={wasmReady} workerReady={workerReady} />
       <input
