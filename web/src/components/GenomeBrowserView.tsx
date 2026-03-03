@@ -5,6 +5,7 @@ import { ControlPanel } from "./ControlPanel";
 import { FeatureDetails } from "./FeatureDetails";
 import { GenomeBrush } from "./GenomeBrush";
 import { GenomicAxis } from "./GenomicAxis";
+import { GeneSearch } from "./GeneSearch";
 import { LoadingState } from "./LoadingState";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
@@ -78,6 +79,8 @@ export function GenomeBrowserView() {
   const annotationRef = useRef<HTMLCanvasElement>(null); // strand arrows + gene labels
   const overlayRef = useRef<HTMLCanvasElement>(null); // hover highlight only
   const rendererRef = useRef<Renderer | null>(null);
+  const highlightedFeatureRef = useRef<Feature | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
   const [wasmReady, setWasmReady] = useState(false);
@@ -413,6 +416,18 @@ export function GenomeBrowserView() {
       } else if (arrow) {
         ctx.fillText(arrow, cx, cy);
       }
+
+      // Highlight ring for search-jumped feature
+      const hl = highlightedFeatureRef.current;
+      if (hl && f.name === hl.name && f.start === hl.start) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(250, 200, 80, 0.95)";
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = "rgba(250, 200, 80, 0.6)";
+        ctx.shadowBlur = 6;
+        ctx.strokeRect(x1 + 1, y1 + 1, x2 - x1 - 2, y2 - y1 - 2);
+        ctx.restore();
+      }
     }
   }, [features, viewport]);
 
@@ -429,41 +444,78 @@ export function GenomeBrowserView() {
     );
   }
 
+  const savedViewportRef = useRef<Viewport | null>(null);
+
+  function jumpTo(start: number, end: number, feature?: Feature) {
+    savedViewportRef.current = null;
+    setViewport(clampViewport(start, end, chromosomeLength));
+    if (feature) {
+      highlightedFeatureRef.current = feature;
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => {
+        highlightedFeatureRef.current = null;
+      }, 1500);
+    }
+  }
+
+  function previewViewport(start: number, end: number, feature?: Feature) {
+    if (!savedViewportRef.current) savedViewportRef.current = viewport;
+    setViewport(clampViewport(start, end, chromosomeLength));
+    if (feature) highlightedFeatureRef.current = feature;
+  }
+
+  function cancelPreview() {
+    if (savedViewportRef.current) {
+      setViewport(savedViewportRef.current);
+      savedViewportRef.current = null;
+    }
+    highlightedFeatureRef.current = null;
+  }
+
+  function panBy(fraction: number) {
+    const span = viewport.end - viewport.start;
+    const delta = span * fraction;
+    setViewport(
+      clampViewport(
+        viewport.start + delta,
+        viewport.end + delta,
+        chromosomeLength || span,
+      ),
+    );
+  }
+
   return (
-    <div style={{ width: "100%" }}>
+    <div className="w-full border border-white/[0.07] rounded-md overflow-hidden">
+      <div className="flex items-center gap-3 px-2.5 py-1.5 bg-[rgba(18,18,24,0.95)] border-b border-white/[0.07]">
+        <GeneSearch
+          allFeatures={allFeatures}
+          chromosomeLength={chromosomeLength}
+          onJump={jumpTo}
+          onPreview={(s, e, f) => previewViewport(s, e, f)}
+          onCancelPreview={cancelPreview}
+        />
+      </div>
       <ControlPanel
         viewport={viewport}
         chromosomeLength={chromosomeLength}
         onZoomIn={() => zoomBy(0.5)}
         onZoomOut={() => zoomBy(2)}
         onReset={() => setViewport(INITIAL_VIEWPORT)}
+        onPanLeft={() => panBy(-0.2)}
+        onPanRight={() => panBy(0.2)}
       />
-      <div style={{ position: "relative" }}>
+      <div className="relative">
         <canvas
           ref={canvasRef}
-          style={{ width: "100%", height: "400px", display: "block" }}
+          className="block w-full h-100"
         />
         <canvas
           ref={annotationRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "400px",
-            pointerEvents: "none",
-          }}
+          className="absolute inset-0 w-full h-100 pointer-events-none"
         />
         <canvas
           ref={overlayRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "400px",
-            pointerEvents: "none",
-          }}
+          className="absolute inset-0 w-full h-100 pointer-events-none"
         />
         <GenomicAxis
           viewportStart={viewport.start}
