@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { axisBottom } from "d3-axis";
 import { scaleLinear } from "d3-scale";
 import { brushX, type BrushBehavior, type D3BrushEvent } from "d3-brush";
 import { select } from "d3-selection";
+import "d3-transition";
 import type { Feature } from "../hooks/useGenomeWorker";
 
 interface Props {
@@ -12,9 +14,10 @@ interface Props {
   onBrush: (start: number, end: number) => void;
 }
 
-const HEIGHT = 56;
+const AXIS_HEIGHT = 18;
 const DENSITY_HEIGHT = 32;
 const BRUSH_HEIGHT = 48;
+const HEIGHT = AXIS_HEIGHT + BRUSH_HEIGHT;
 const NUM_BINS = 300;
 
 function buildDensity(features: Feature[], chromLen: number, bins: number): number[] {
@@ -35,7 +38,7 @@ export function GenomeBrush({ chromosomeLength, viewportStart, viewportEnd, allF
   // Track whether a brush interaction is in progress to avoid feedback loops.
   const brushingRef = useRef(false);
 
-  // Draw density bars + init brush on first render (or when chromLen/features change).
+  // Draw axis + density bars + init brush on first render (or when chromLen/features change).
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || chromosomeLength === 0) return;
@@ -48,13 +51,33 @@ export function GenomeBrush({ chromosomeLength, viewportStart, viewportEnd, allF
     const g = select(svg);
     g.selectAll("*").remove();
 
-    // --- Density background ---
+    // --- Top axis (full chromosome coordinates) ---
+    const axisScale = scaleLinear().domain([0, chromosomeLength]).range([0, width]);
+    const axis = axisBottom(axisScale)
+      .ticks(6)
+      .tickFormat((d) => {
+        const v = +d;
+        if (chromosomeLength >= 1_000_000) return `${(v / 1_000_000).toFixed(0)} Mb`;
+        if (chromosomeLength >= 1_000) return `${(v / 1_000).toFixed(0)} kb`;
+        return `${v}`;
+      });
+
+    const axisG = g.append("g").attr("transform", `translate(0, ${AXIS_HEIGHT - 2})`);
+    axisG.call(axis);
+    axisG.select(".domain").attr("stroke", "rgba(255,255,255,0.15)");
+    axisG.selectAll(".tick line").attr("stroke", "rgba(255,255,255,0.25)");
+    axisG.selectAll(".tick text")
+      .attr("fill", "rgba(160,160,170,0.7)")
+      .attr("font-size", "10px")
+      .attr("font-family", "monospace");
+
+    // --- Density background (shifted below axis) ---
     if (allFeatures.length > 0) {
       const counts = buildDensity(allFeatures, chromosomeLength, NUM_BINS);
       const maxCount = Math.max(...counts, 1);
       const binPx = width / NUM_BINS;
 
-      const densityG = g.append("g").attr("class", "density");
+      const densityG = g.append("g").attr("class", "density").attr("transform", `translate(0, ${AXIS_HEIGHT})`);
       counts.forEach((count, i) => {
         if (count === 0) return;
         const barH = (count / maxCount) * DENSITY_HEIGHT;
@@ -68,11 +91,11 @@ export function GenomeBrush({ chromosomeLength, viewportStart, viewportEnd, allF
       });
     }
 
-    // --- Brush ---
+    // --- Brush (shifted below axis) ---
     const brush = brushX<unknown>()
       .extent([
-        [0, 0],
-        [width, BRUSH_HEIGHT],
+        [0, AXIS_HEIGHT],
+        [width, AXIS_HEIGHT + BRUSH_HEIGHT],
       ])
       .on("brush end", (event: D3BrushEvent<unknown>) => {
         if (!event.selection || !event.sourceEvent) return; // programmatic move — skip
@@ -124,21 +147,8 @@ export function GenomeBrush({ chromosomeLength, viewportStart, viewportEnd, allF
     <div style={{ position: "relative", width: "100%", background: "rgba(14,14,18,0.97)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
       <svg
         ref={svgRef}
-        style={{ display: "block", width: "100%", height: HEIGHT, overflow: "visible" }}
+        style={{ display: "block", width: "100%", height: HEIGHT }}
       />
-      <div style={{
-        position: "absolute",
-        bottom: 2,
-        left: 0,
-        right: 0,
-        textAlign: "center",
-        fontSize: 10,
-        fontFamily: "monospace",
-        color: "rgba(160,160,170,0.5)",
-        pointerEvents: "none",
-      }}>
-        chr22 overview — drag to navigate
-      </div>
     </div>
   );
 }

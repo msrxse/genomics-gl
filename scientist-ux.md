@@ -37,11 +37,11 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 
 ## Tasks
 
-- [ ] Task 1 — Gene name search (autocomplete dropdown)
+- [x] Task 1 — Gene name search (autocomplete dropdown)
 - [ ] Task 2 — Coordinate jump (same input box)
 - [x] Task 3 — Strand arrows + remove strand colour coding
 - [x] Task 4 — Gene name labels inside blocks
-- [ ] Task 5 — Pan buttons in control panel
+- [x] Task 5 — Pan buttons in control panel
 - [ ] Task 6 — User-uploaded BED file (second track) ⚠️ not planned
 
 ### Task 1 — Gene name search (autocomplete dropdown)

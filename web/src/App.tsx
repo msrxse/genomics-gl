@@ -2,8 +2,8 @@ import { GenomeBrowserView } from './components/GenomeBrowserView';
 
 function App() {
   return (
-    <div style={{ padding: '1rem', fontFamily: 'system-ui, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+    <div className="min-h-screen flex flex-col justify-center p-4">
+      <h1 className="text-lg font-semibold mb-2">
         GenomicsGL — chr22 Gene Browser
       </h1>
       <GenomeBrowserView />
