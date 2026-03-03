@@ -151,12 +151,8 @@ fn genomic_to_screen(pos: u32, vp_start: u32, vp_end: u32, canvas_width: f32) ->
     (offset / span) * canvas_width
 }
 
-fn strand_color(strand: Strand) -> [f32; 3] {
-    match strand {
-        Strand::Plus    => [0.25, 0.75, 0.35], // green
-        Strand::Minus   => [0.85, 0.30, 0.30], // red
-        Strand::Unknown => [0.55, 0.55, 0.60], // grey
-    }
+fn strand_color(_strand: Strand) -> [f32; 3] {
+    [0.29, 0.56, 0.85] // steel blue #4a90d9 — strand shown via 2D overlay arrows
 }
 
 fn push_quad(vertices: &mut Vec<f32>, x1: f32, y1: f32, x2: f32, y2: f32, color: [f32; 3]) {

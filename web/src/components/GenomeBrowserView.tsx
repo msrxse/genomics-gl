@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { useGenomeWorker } from "../hooks/useGenomeWorker";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Feature } from "../hooks/useGenomeWorker";
-import { FeatureDetails } from "./FeatureDetails";
-import { LoadingState } from "./LoadingState";
-import { GenomicAxis } from "./GenomicAxis";
+import { useGenomeWorker } from "../hooks/useGenomeWorker";
 import { ControlPanel } from "./ControlPanel";
+import { FeatureDetails } from "./FeatureDetails";
 import { GenomeBrush } from "./GenomeBrush";
+import { GenomicAxis } from "./GenomicAxis";
+import { LoadingState } from "./LoadingState";
 import init, { Renderer } from "/pkg/genome_engine.js";
 
 // Mirror of the renderer's layout constants (renderer.rs)
@@ -13,15 +13,20 @@ const RULER_HEIGHT = 30;
 const ROW_HEIGHT = 20;
 const PADDING = 2;
 
-function genomicToScreen(pos: number, vpStart: number, vpEnd: number, canvasWidth: number): number {
+function genomicToScreen(
+  pos: number,
+  vpStart: number,
+  vpEnd: number,
+  canvasWidth: number,
+): number {
   return ((pos - vpStart) / (vpEnd - vpStart)) * canvasWidth;
 }
 
 // Mirror of pack_rows in renderer.rs — greedy row packing by feature end position.
 function packRows(features: Feature[]): number[] {
   const rowEnds: number[] = [];
-  return features.map(f => {
-    const row = rowEnds.findIndex(end => end <= f.start);
+  return features.map((f) => {
+    const row = rowEnds.findIndex((end) => end <= f.start);
     if (row === -1) {
       rowEnds.push(f.end);
       return rowEnds.length - 1;
@@ -29,6 +34,22 @@ function packRows(features: Feature[]): number[] {
     rowEnds[row] = f.end;
     return row;
   });
+}
+
+function truncateToFit(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let lo = 0,
+    hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (ctx.measureText(text.slice(0, mid) + "…").width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo === 0 ? "" : text.slice(0, lo) + "…";
 }
 
 export interface HoveredFeature {
@@ -54,38 +75,50 @@ function clampViewport(start: number, end: number, chromLen: number): Viewport {
 
 export function GenomeBrowserView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const annotationRef = useRef<HTMLCanvasElement>(null); // strand arrows + gene labels
+  const overlayRef = useRef<HTMLCanvasElement>(null); // hover highlight only
   const rendererRef = useRef<Renderer | null>(null);
 
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
   const [wasmReady, setWasmReady] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(0);
+  const [hoveredFeature, setHoveredFeature] = useState<HoveredFeature | null>(
+    null,
+  );
 
-  const { ready: workerReady, features, allFeatures, chromosomeLength, query, queryAll } = useGenomeWorker();
+  const {
+    ready: workerReady,
+    features,
+    allFeatures,
+    chromosomeLength,
+    query,
+    queryAll,
+  } = useGenomeWorker();
 
-  // Pattern since we dont want query to be included in dependencies arrays.
-  // since it comes from the worker - theres no way to memoise it.
-  // Here we ensure latest is used.
-  const queryRef = useRef(query);
-  useEffect(() => {
-    queryRef.current = query;
-  }, [query]);
-
-  const queryAllRef = useRef(queryAll);
-  useEffect(() => {
-    queryAllRef.current = queryAll;
-  }, [queryAll]);
-
-  // Fetch all features once for the GenomeBrush density overview.
+  /**
+   * Query the worker whenever the viewport changes
+   * (or when the worker first becomes ready).
+   */
   useEffect(() => {
     if (workerReady) {
-      queryAllRef.current();
+      query(viewport.start, viewport.end);
     }
-  }, [workerReady]);
+  }, [workerReady, viewport, query]);
 
-  // Initialize Wasm and create the Renderer once on mount.
-  // The isMounted flag guards against StrictMode's double-invoke: if the effect
-  // is cleaned up before init() resolves, the stale callback is a no-op.
+  /**
+   * Fetch all features once for the GenomeBrush density overview.
+   */
+  useEffect(() => {
+    if (workerReady) {
+      queryAll();
+    }
+  }, [workerReady, queryAll]);
+
+  /**
+   * Initialize Wasm and create the Renderer once on mount.
+   * The isMounted flag guards against StrictMode's double-invoke: if the effect
+   * is cleaned up before init() resolves, the stale callback is a no-op.
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -120,25 +153,58 @@ export function GenomeBrowserView() {
     };
   }, []);
 
-  // Query the worker whenever the viewport changes (or when the worker first becomes ready).
-  useEffect(() => {
-    if (workerReady) {
-      queryRef.current(viewport.start, viewport.end);
-    }
-  }, [workerReady, viewport]);
+  const onHoverMove = useEffectEvent(
+    (e: MouseEvent, canvas: HTMLCanvasElement, overlay: HTMLCanvasElement) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const cw = canvas.width;
+      const scaleX = rect.width / cw;
+      const scaleY = rect.height / canvas.height;
 
-  // Zoom centered on cursor position.
-  // Attached manually (not via React onWheel) so we can pass { passive: false }
-  // and call preventDefault() to prevent the page from scrolling while zooming.
-  const viewportRef = useRef(viewport);
-  useEffect(() => { viewportRef.current = viewport; }, [viewport]);
-  const chromLenRef = useRef(chromosomeLength);
-  useEffect(() => { chromLenRef.current = chromosomeLength; }, [chromosomeLength]);
+      const rows = packRows(features);
+      let hit: HoveredFeature | null = null;
 
-  // Hover hit-test — rAF-throttled mousemove over the canvas.
-  const [hoveredFeature, setHoveredFeature] = useState<HoveredFeature | null>(null);
-  const featuresRef = useRef<Feature[]>([]);
-  useEffect(() => { featuresRef.current = features; }, [features]);
+      for (let i = 0; i < features.length; i++) {
+        const f = features[i];
+        const x1 = genomicToScreen(f.start, viewport.start, viewport.end, cw);
+        const x2 = genomicToScreen(f.end, viewport.start, viewport.end, cw);
+        const y1 = RULER_HEIGHT + rows[i] * ROW_HEIGHT + PADDING;
+        const y2 = y1 + ROW_HEIGHT - 2 * PADDING;
+
+        if (
+          mouseX >= x1 * scaleX &&
+          mouseX <= x2 * scaleX &&
+          mouseY >= y1 * scaleY &&
+          mouseY <= y2 * scaleY
+        ) {
+          hit = {
+            feature: f,
+            screenX: e.clientX - rect.left,
+            screenY: e.clientY - rect.top,
+          };
+
+          const ctx = overlay.getContext("2d")!;
+          ctx.clearRect(0, 0, overlay.width, overlay.height);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+          canvas.style.cursor = "crosshair";
+          break;
+        }
+      }
+
+      if (!hit) {
+        overlay
+          .getContext("2d")!
+          .clearRect(0, 0, overlay.width, overlay.height);
+        canvas.style.cursor = "grab";
+      }
+
+      setHoveredFeature(hit);
+    },
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -153,137 +219,128 @@ export function GenomeBrowserView() {
     let rafId: number | null = null;
 
     function onMouseMove(e: MouseEvent) {
-      if (rafId !== null) return; // already scheduled
+      if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        const rect = canvas!.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const vp = viewportRef.current;
-        const cw = canvas!.width;
-        const ch = canvas!.height;
-        const scaleX = rect.width / cw;
-        const scaleY = rect.height / ch;
-
-        const rows = packRows(featuresRef.current);
-        let hit: HoveredFeature | null = null;
-
-        for (let i = 0; i < featuresRef.current.length; i++) {
-          const f = featuresRef.current[i];
-          const x1 = genomicToScreen(f.start, vp.start, vp.end, cw);
-          const x2 = genomicToScreen(f.end, vp.start, vp.end, cw);
-          const y1 = RULER_HEIGHT + rows[i] * ROW_HEIGHT + PADDING;
-          const y2 = y1 + ROW_HEIGHT - 2 * PADDING;
-
-          if (
-            mouseX >= x1 * scaleX && mouseX <= x2 * scaleX &&
-            mouseY >= y1 * scaleY && mouseY <= y2 * scaleY
-          ) {
-            hit = { feature: f, screenX: e.clientX - rect.left, screenY: e.clientY - rect.top };
-
-            // Draw highlight rect on the 2D overlay (in canvas pixel space)
-            const ctx = overlay!.getContext('2d')!;
-            ctx.clearRect(0, 0, overlay!.width, overlay!.height);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-            canvas!.style.cursor = 'crosshair';
-            break;
-          }
-        }
-
-        if (!hit) {
-          overlay!.getContext('2d')!.clearRect(0, 0, overlay!.width, overlay!.height);
-          canvas!.style.cursor = 'grab';
-        }
-
-        setHoveredFeature(hit);
+        onHoverMove(e, canvas!, overlay!);
       });
     }
 
     function onMouseLeave() {
-      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
-      overlay!.getContext('2d')!.clearRect(0, 0, overlay!.width, overlay!.height);
-      canvas!.style.cursor = 'grab';
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      overlay!
+        .getContext("2d")!
+        .clearRect(0, 0, overlay!.width, overlay!.height);
+      canvas!.style.cursor = "grab";
       setHoveredFeature(null);
     }
 
-    canvas.addEventListener('mousemove', onMouseMove);
-    canvas.addEventListener('mouseleave', onMouseLeave);
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mouseleave", onMouseLeave);
     return () => {
-      canvas.removeEventListener('mousemove', onMouseMove);
-      canvas.removeEventListener('mouseleave', onMouseLeave);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mouseleave", onMouseLeave);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, []);
 
   // Pan by click+drag. Track the genomic position under the cursor on mousedown,
   // then shift the viewport so that position stays under the cursor as it moves.
+  const onDragMove = useEffectEvent(
+    (
+      e: MouseEvent,
+      dragStartX: number,
+      dragStartVp: Viewport,
+      canvasWidth: number,
+    ) => {
+      const span = dragStartVp.end - dragStartVp.start;
+      const bpPerPixel = span / canvasWidth;
+      const deltaBp = (e.clientX - dragStartX) * bpPerPixel;
+      setViewport(
+        clampViewport(
+          dragStartVp.start - deltaBp,
+          dragStartVp.end - deltaBp,
+          chromosomeLength || span,
+        ),
+      );
+    },
+  );
+
+  const onDragStart = useEffectEvent((e: MouseEvent) => ({
+    startX: e.clientX,
+    startVp: { ...viewport },
+  }));
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     let dragStartX: number | null = null;
-    let dragStartVp: { start: number; end: number } | null = null;
+    let dragStartVp: Viewport | null = null;
 
     function onMouseDown(e: MouseEvent) {
-      dragStartX = e.clientX;
-      dragStartVp = { ...viewportRef.current };
-      canvas!.style.cursor = 'grabbing';
+      const { startX, startVp } = onDragStart(e);
+      dragStartX = startX;
+      dragStartVp = startVp;
+      canvas!.style.cursor = "grabbing";
     }
 
     function onMouseMove(e: MouseEvent) {
       if (dragStartX === null || dragStartVp === null) return;
-      const vp = dragStartVp;
-      const span = vp.end - vp.start;
-      const bpPerPixel = span / canvas!.getBoundingClientRect().width;
-      const deltaBp = (e.clientX - dragStartX) * bpPerPixel;
-      const chromLen = chromLenRef.current;
-      setViewport(clampViewport(vp.start - deltaBp, vp.end - deltaBp, chromLen || span));
+      onDragMove(
+        e,
+        dragStartX,
+        dragStartVp,
+        canvas!.getBoundingClientRect().width,
+      );
     }
 
     function onMouseUp() {
       dragStartX = null;
       dragStartVp = null;
-      canvas!.style.cursor = 'grab';
+      canvas!.style.cursor = "grab";
     }
 
-    canvas.style.cursor = 'grab';
-    canvas.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    canvas.style.cursor = "grab";
+    canvas.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  const onWheel = useEffectEvent((e: WheelEvent, canvas: HTMLCanvasElement) => {
+    e.preventDefault();
+    if (chromosomeLength === 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const cursorFraction = (e.clientX - rect.left) / rect.width;
+    const span = viewport.end - viewport.start;
+    const genomicCursor = viewport.start + cursorFraction * span;
+
+    const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8;
+    const newSpan = span * zoomFactor;
+    const newStart = genomicCursor - cursorFraction * newSpan;
+
+    setViewport(clampViewport(newStart, newStart + newSpan, chromosomeLength));
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    function onWheel(e: WheelEvent) {
-      e.preventDefault();
-      const chromLen = chromLenRef.current;
-      if (chromLen === 0) return;
-
-      const rect = canvas!.getBoundingClientRect();
-      const cursorFraction = (e.clientX - rect.left) / rect.width;
-      const vp = viewportRef.current;
-      const span = vp.end - vp.start;
-      const genomicCursor = vp.start + cursorFraction * span;
-
-      const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8;
-      const newSpan = span * zoomFactor;
-      const newStart = genomicCursor - cursorFraction * newSpan;
-
-      setViewport(clampViewport(newStart, newStart + newSpan, chromLen));
+    function handleWheel(e: WheelEvent) {
+      onWheel(e, canvas!);
     }
 
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
   }, []);
 
   // Re-render when features or wasm readiness changes
@@ -294,19 +351,82 @@ export function GenomeBrowserView() {
     if (canvas.width === 0 || canvas.height === 0) return;
 
     try {
-      renderer.render(features, viewport.start, viewport.end, canvas.width, canvas.height);
+      renderer.render(
+        features,
+        viewport.start,
+        viewport.end,
+        canvas.width,
+        canvas.height,
+      );
     } catch (e) {
       console.error("render() failed:", e);
     }
   }, [features, wasmReady, viewport]);
 
+  // Draw strand arrows on the annotation canvas whenever features or viewport change.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const annotation = annotationRef.current;
+    if (!canvas || !annotation || features.length === 0) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+    if (cw === 0 || ch === 0) return;
+
+    annotation.width = cw;
+    annotation.height = ch;
+
+    const ctx = annotation.getContext("2d")!;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = "13px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const rows = packRows(features);
+
+    for (let i = 0; i < features.length; i++) {
+      const f = features[i];
+      const x1 = genomicToScreen(f.start, viewport.start, viewport.end, cw);
+      const x2 = genomicToScreen(f.end, viewport.start, viewport.end, cw);
+      const screenWidth = x2 - x1;
+      if (screenWidth <= 20) continue;
+
+      const y1 = RULER_HEIGHT + rows[i] * ROW_HEIGHT + PADDING;
+      const y2 = y1 + ROW_HEIGHT - 2 * PADDING;
+      const cy = (y1 + y2) / 2;
+      const cx = (x1 + x2) / 2;
+
+      const arrow =
+        f.strand === "Plus" ? "▶" : f.strand === "Minus" ? "◀" : null;
+
+      if (screenWidth > 60 && arrow) {
+        // Label mode: prefixed arrow + gene name, clipped to block bounds.
+        const label = `${arrow} ${f.name}`;
+        const truncated = truncateToFit(ctx, label, screenWidth - 6);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x1, y1, screenWidth, y2 - y1);
+        ctx.clip();
+        ctx.fillText(truncated, cx, cy);
+        ctx.restore();
+      } else if (arrow) {
+        ctx.fillText(arrow, cx, cy);
+      }
+    }
+  }, [features, viewport]);
+
   function zoomBy(factor: number) {
-    const vp = viewportRef.current;
-    const chromLen = chromLenRef.current;
-    const span = vp.end - vp.start;
-    const mid = vp.start + span / 2;
+    const span = viewport.end - viewport.start;
+    const mid = viewport.start + span / 2;
     const newSpan = span * factor;
-    setViewport(clampViewport(mid - newSpan / 2, mid + newSpan / 2, chromLen || span));
+    setViewport(
+      clampViewport(
+        mid - newSpan / 2,
+        mid + newSpan / 2,
+        chromosomeLength || span,
+      ),
+    );
   }
 
   return (
@@ -324,10 +444,32 @@ export function GenomeBrowserView() {
           style={{ width: "100%", height: "400px", display: "block" }}
         />
         <canvas
-          ref={overlayRef}
-          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "400px", pointerEvents: "none" }}
+          ref={annotationRef}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "400px",
+            pointerEvents: "none",
+          }}
         />
-        <GenomicAxis viewportStart={viewport.start} viewportEnd={viewport.end} width={canvasWidth} />
+        <canvas
+          ref={overlayRef}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "400px",
+            pointerEvents: "none",
+          }}
+        />
+        <GenomicAxis
+          viewportStart={viewport.start}
+          viewportEnd={viewport.end}
+          width={canvasWidth}
+        />
         <FeatureDetails hovered={hoveredFeature} />
         <LoadingState wasmReady={wasmReady} workerReady={workerReady} />
       </div>
@@ -336,7 +478,9 @@ export function GenomeBrowserView() {
         viewportStart={viewport.start}
         viewportEnd={viewport.end}
         allFeatures={allFeatures}
-        onBrush={(start, end) => setViewport(clampViewport(start, end, chromosomeLength))}
+        onBrush={(start, end) =>
+          setViewport(clampViewport(start, end, chromosomeLength))
+        }
       />
     </div>
   );

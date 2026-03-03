@@ -1,5 +1,5 @@
 // Typed React hook wrapping the genome WebWorker.
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface Feature {
   chrom: string;
@@ -52,13 +52,13 @@ export function useGenomeWorker() {
     return () => worker.terminate();
   }, []);
 
-  function query(start: number, end: number) {
+  const query = useCallback((start: number, end: number) => {
     workerRef.current?.postMessage({ type: 'query', start, end });
-  }
+  }, []);
 
-  function queryAll() {
+  const queryAll = useCallback(() => {
     workerRef.current?.postMessage({ type: 'queryAll' });
-  }
+  }, []);
 
   return { ...state, query, queryAll };
 }

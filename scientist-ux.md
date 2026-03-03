@@ -37,6 +37,13 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 
 ## Tasks
 
+- [ ] Task 1 — Gene name search (autocomplete dropdown)
+- [ ] Task 2 — Coordinate jump (same input box)
+- [x] Task 3 — Strand arrows + remove strand colour coding
+- [x] Task 4 — Gene name labels inside blocks
+- [ ] Task 5 — Pan buttons in control panel
+- [ ] Task 6 — User-uploaded BED file (second track) ⚠️ not planned
+
 ### Task 1 — Gene name search (autocomplete dropdown)
 
 **What it does:** A separate search bar above the genome track. User types a gene name → autocomplete dropdown shows matching results from `allFeatures` → user selects one → viewport jumps to that gene's locus.
@@ -44,6 +51,7 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 **UI:** Built with shadcn `Command` (combobox pattern) + Tailwind. Separate component from `ControlPanel`, placed above the WebGL canvas.
 
 **Behaviour:**
+
 - Filter `allFeatures` (already in React state) by `name.toLowerCase().includes(query)` on each keystroke — no worker or Rust changes needed
 - Cap dropdown results at 10 items
 - Keyboard nav: ↑↓ to move through results, Enter to select, Escape to close
@@ -60,12 +68,14 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 **What it does:** The same search input from Task 1 also accepts genomic coordinates — if the input matches a coordinate pattern, skip the dropdown and jump directly on Enter.
 
 **Supported formats:**
+
 - `29000000-30000000`
 - `29,000,000-30,000,000`
 - `chr22:29000000-30000000`
 - `chr22:29,000,000-30,000,000`
 
 **Behaviour:**
+
 - On each keystroke, check if input matches a coordinate pattern (regex) — if yes, hide the gene dropdown
 - On Enter: strip commas, parse start/end as integers, validate, jump viewport
 - Validation: clamp to `[0, chromosomeLength]`, swap if start > end, reject if range < 500 bp
@@ -80,6 +90,7 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 **Why:** This matches the standard BED rendering in UCSC and IGV. Colour-by-strand is a custom design that can confuse scientists who expect colour to mean score or feature type.
 
 **Behaviour:**
+
 - All gene blocks rendered in a single neutral colour (e.g. steel blue `#4a90d9`)
 - When a feature's screen width > ~20px: draw a centred `›` (+ strand) or `‹` (− strand) on the 2D overlay canvas, same pass as the hover highlight
 - When screen width ≤ 20px: no arrow (too small, would be noise)
@@ -94,6 +105,7 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 **What it does:** Draw the gene name as text inside the feature block when the block is wide enough on screen to fit it. Falls back to nothing at low zoom (blocks too narrow).
 
 **Behaviour:**
+
 - On the 2D overlay canvas render pass (same as strand arrows and hover highlight): for each visible feature, if screen width > ~60px, draw the gene name centred horizontally and vertically inside the block
 - Clip text to block width using `ctx.save()` / `ctx.clip()` so it never overflows into adjacent features
 - Font: small monospace, e.g. `10px monospace`, white or light grey
@@ -104,13 +116,30 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 
 **Note:** Tasks 3 and 4 both draw on the 2D overlay canvas in the same render pass — implement them together to avoid two separate loops over visible features.
 
-### Task 5 — User-uploaded BED file (second track) ⚠️ not planned
+### Task 5 — Pan buttons in control panel
+
+**What it does:** Add `◀` and `▶` buttons to the existing `ControlPanel` that shift the viewport left or right by a fixed fraction of the current span — giving keyboard-free, precise panning without relying on mouse drag.
+
+**Why:** Mouse drag panning is fine for coarse navigation but hard to use precisely — small movements at high zoom levels require very controlled drag. Scientists who work at single-gene resolution need a reliable way to nudge the view by a consistent amount.
+
+**Behaviour:**
+
+- Each click shifts the viewport by 20% of the current span in the respective direction
+- Clamp to `[0, chromosomeLength]` as usual
+- Buttons sit alongside the existing zoom in / zoom out / reset buttons in `ControlPanel`
+
+**Files touched:** `ControlPanel.tsx` (add two buttons + `onPanLeft` / `onPanRight` props), `GenomeBrowserView.tsx` (implement handlers, pass as props).
+
+---
+
+### Task 6 — User-uploaded BED file (second track) ⚠️ not planned
 
 **Not planned for implementation.** Documented here for completeness.
 
 **What it would do:** Allow the user to upload their own `.bed` file (e.g. a ChIP-seq peak file) and render it as a second track below the gene annotation track, enabling overlap analysis.
 
 **Why it's complex:**
+
 - Requires a second WebWorker instance or extending the existing worker protocol to handle named/multiple datasets
 - WebGL renderer needs dynamic canvas height and a second row of quads in a distinct colour
 - 2D overlay hit-testing must be track-aware
