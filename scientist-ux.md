@@ -38,7 +38,7 @@ They'd want to load their own BED file (e.g. a ChIP-seq peak file) alongside the
 ## Tasks
 
 - [x] Task 1 — Gene name search (autocomplete dropdown)
-- [ ] Task 2 — Coordinate jump (same input box)
+- [x] Task 2 — Coordinate jump (same input box)
 - [x] Task 3 — Strand arrows + remove strand colour coding
 - [x] Task 4 — Gene name labels inside blocks
 - [x] Task 5 — Pan buttons in control panel

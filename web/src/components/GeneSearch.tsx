@@ -26,9 +26,10 @@ function parseCoords(raw: string): [number, number] | null {
   const s = raw.replace(/,/g, "").replace(/^chr\w+:/i, "").trim();
   const m = s.match(/^(\d+)[-–](\d+)$/);
   if (!m) return null;
-  const start = parseInt(m[1], 10);
-  const end = parseInt(m[2], 10);
-  if (isNaN(start) || isNaN(end) || end <= start) return null;
+  let start = parseInt(m[1], 10);
+  let end = parseInt(m[2], 10);
+  if (isNaN(start) || isNaN(end) || start === end) return null;
+  if (start > end) [start, end] = [end, start];
   return [start, end];
 }
 
@@ -40,9 +41,10 @@ export function GeneSearch({ allFeatures, chromosomeLength, onJump, onPreview, o
   const [error, setError] = useState<string | null>(null);
 
   const trimmed = query.trim();
+  const looksLikeCoords = parseCoords(trimmed) !== null || /\d.*[-–]\d/.test(trimmed);
 
   const filtered =
-    trimmed.length >= 2
+    !looksLikeCoords && trimmed.length >= 2
       ? allFeatures
           .filter((f) => f.name.toLowerCase().includes(trimmed.toLowerCase()))
           .slice(0, MAX_RESULTS)
@@ -88,7 +90,9 @@ export function GeneSearch({ allFeatures, chromosomeLength, onJump, onPreview, o
               onValueChange={(v) => {
                 setQuery(v);
                 setError(null);
-                setOpen(v.trim().length >= 2);
+                const t = v.trim();
+                const isCoords = parseCoords(t) !== null || /\d.*[-–]\d/.test(t);
+                setOpen(t.length >= 2 && !isCoords);
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => { if (trimmed.length >= 2) setOpen(true); }}
